@@ -1,0 +1,24 @@
+# AlQuran Cloud Backend Dependencies
+# Use this for cloud deployment (Groq/Together.ai/OpenAI)
+# For local development with Ollama, use requirements.txt instead
+
+# Backend API
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic>=2.0.0
+
+# Vector Search
+hnswlib>=0.8.0
+sentence-transformers>=3.0.0
+numpy>=2.0.0
+
+# LLM Providers
+groq>=0.11.0
+openai>=1.40.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Web Fallback
+duckduckgo-search>=6.0.0
+requests>=2.32.0

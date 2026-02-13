@@ -1,0 +1,22 @@
+# Virtual environment
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+
+# Secrets
+.env
+.webui_secret_key
+
+# Frontend (deployed separately)
+sacred-scroll-ai-main/
+sacred-scroll-ai.zip
+
+# IDE / Editor
+*.code-workspace
+.streamlit/

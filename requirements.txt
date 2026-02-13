@@ -1,0 +1,22 @@
+# Quran-Talk - Minimal Requirements (Open WebUI Edition)
+
+# Backend API
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic>=2.0.0
+
+# Vector Search
+hnswlib>=0.8.0
+sentence-transformers>=3.0.0
+numpy>=2.0.0
+
+# LLM
+langchain-ollama>=0.2.0
+
+# Web Fallback
+duckduckgo-search>=6.0.0
+requests>=2.32.0
+
+# Only needed if rebuilding database
+# datasets>=3.0.0
+# tqdm>=4.66.0

@@ -1,0 +1,10 @@
+# Keep Docker build context small
+venv/
+__pycache__/
+*.log
+.env
+.git/
+sacred-scroll-ai-main/
+sacred-scroll-ai.zip
+*.code-workspace
+.streamlit/
