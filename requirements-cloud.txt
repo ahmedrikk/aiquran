@@ -7,9 +7,11 @@ fastapi>=0.115.0
 uvicorn>=0.30.0
 pydantic>=2.0.0
 
-# Vector Search
+# Vector Search (ONNX-based, no PyTorch needed)
 hnswlib>=0.8.0
-sentence-transformers>=3.0.0
+onnxruntime>=1.17.0
+tokenizers>=0.19.0
+huggingface-hub>=0.23.0
 numpy>=2.0.0
 
 # LLM Providers

@@ -1,10 +1,10 @@
 # =====================================================
-# AlQuran Cloud Backend - Dockerfile (Optimized)
-# Multi-stage build with CPU-only PyTorch to keep
-# the final image under Railway's 4GB limit.
+# AlQuran Cloud Backend - Dockerfile (Lightweight)
+# No PyTorch — uses ONNX Runtime for embeddings.
+# Final image ~1-1.5GB instead of 8GB.
 # =====================================================
 
-# --- Stage 1: Build (install deps + compile hnswlib) ---
+# --- Stage 1: Build (compile hnswlib) ---
 FROM python:3.11-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,22 +12,21 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install C++ build tools needed by hnswlib
+# gcc/g++ needed to compile hnswlib C++ extension
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc g++ && \
     rm -rf /var/lib/apt/lists/*
 
-# Install CPU-only PyTorch FIRST (~200MB vs ~2.5GB with CUDA)
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-# Install remaining dependencies (sentence-transformers will see torch is already satisfied)
 COPY requirements-cloud.txt .
 RUN pip install --no-cache-dir -r requirements-cloud.txt
 
-# Pre-download the embedding model so it's baked into the image
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+# Pre-download the ONNX embedding model (~80MB)
+RUN python -c "\
+    from huggingface_hub import hf_hub_download; \
+    hf_hub_download('sentence-transformers/all-MiniLM-L6-v2', 'onnx/model.onnx'); \
+    hf_hub_download('sentence-transformers/all-MiniLM-L6-v2', 'tokenizer.json')"
 
-# --- Stage 2: Runtime (no gcc/g++, much smaller) ---
+# --- Stage 2: Runtime (no build tools) ---
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -39,11 +38,12 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy pre-downloaded HuggingFace model
+# Copy pre-downloaded HuggingFace model cache
 COPY --from=builder /root/.cache/huggingface /root/.cache/huggingface
 
 # Copy application code and data
 COPY backend_cloud.py .
+COPY embeddings.py .
 COPY quran_data/ ./quran_data/
 
 EXPOSE 8000

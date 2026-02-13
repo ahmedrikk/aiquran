@@ -14,7 +14,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 import hnswlib
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from embeddings import LightEmbeddingModel
 from pydantic import BaseModel
 from typing import Optional
 
@@ -227,8 +227,8 @@ app.add_middleware(
 # =====================================================
 # LOAD MODELS AND DATA
 # =====================================================
-print("🧠 Loading sentence transformer model...")
-embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+print("🧠 Loading ONNX embedding model...")
+embedding_model = LightEmbeddingModel()
 
 print("📂 Loading HNSW vector index...")
 index = hnswlib.Index(space='cosine', dim=EMBEDDING_DIM)
