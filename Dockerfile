@@ -21,7 +21,9 @@ COPY requirements-cloud.txt .
 RUN pip install --no-cache-dir -r requirements-cloud.txt
 
 # Pre-download the ONNX embedding model (~80MB)
-RUN python -c "from huggingface_hub import hf_hub_download; hf_hub_download('sentence-transformers/all-MiniLM-L6-v2', 'onnx/model.onnx'); hf_hub_download('sentence-transformers/all-MiniLM-L6-v2', 'tokenizer.json')"
+# Pre-download the ONNX embedding model (~80MB)
+COPY download_model.py .
+RUN python download_model.py
 
 # --- Stage 2: Runtime (no build tools) ---
 FROM python:3.11-slim
