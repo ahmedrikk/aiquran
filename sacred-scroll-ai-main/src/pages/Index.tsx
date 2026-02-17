@@ -11,8 +11,8 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-// API Configuration
-const API_BASE_URL = "http://localhost:8000/api";
+// API Configuration — falls back to localhost for local dev
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000") + "/api";
 
 interface Message {
   id: string;
