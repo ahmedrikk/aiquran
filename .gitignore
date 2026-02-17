@@ -13,8 +13,7 @@ __pycache__/
 .env
 .webui_secret_key
 
-# Frontend (deployed separately)
-sacred-scroll-ai-main/
+# Frontend build artifacts (managed by frontend .gitignore)
 sacred-scroll-ai.zip
 
 # IDE / Editor
