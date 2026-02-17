@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 import hnswlib
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from embeddings import LightEmbeddingModel
 from pydantic import BaseModel, Field
 from typing import Optional
 from dotenv import load_dotenv
@@ -227,7 +227,7 @@ def startup():
 
     # Load embedding model
     print("🧠 Loading sentence transformer model...")
-    embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+    embedding_model = LightEmbeddingModel()
 
     # Load vector index
     if os.path.exists(INDEX_PATH):

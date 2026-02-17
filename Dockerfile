@@ -43,6 +43,8 @@ COPY --from=builder /root/.cache/huggingface /root/.cache/huggingface
 # Copy application code and data
 COPY backend_cloud.py .
 COPY embeddings.py .
+COPY auth.py .
+COPY database.py .
 COPY quran_data/ ./quran_data/
 
 EXPOSE 8000
