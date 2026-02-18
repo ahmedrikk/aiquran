@@ -16,7 +16,7 @@ DATA_DIR = "./quran_data"
 JWT_EXPIRY_HOURS = "72"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
-# ── Set these in Railway dashboard → Variables (never commit real values) ──
-# GROQ_API_KEY        = "gsk_..."
-# GOOGLE_CLIENT_ID    = "846223196875-iim6ake76pqe61tufn3t8rccogqv7ec2.apps.googleusercontent.com"
-# JWT_SECRET          = "generate with: openssl rand -hex 32"
+# ── Set values for these in Railway dashboard → Variables ──────────────
+GROQ_API_KEY = ""
+GOOGLE_CLIENT_ID = ""
+JWT_SECRET = ""
