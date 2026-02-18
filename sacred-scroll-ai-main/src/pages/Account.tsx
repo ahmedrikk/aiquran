@@ -193,8 +193,14 @@ const Account = () => {
     return (
         <div className="flex flex-col h-full">
             {/* Header / Profile Section */}
-            <div className="islamic-pattern pt-12 pb-8 px-6 text-white relative overflow-hidden">
-                <div className="flex flex-col items-center gap-4">
+            <div className="relative pt-12 pb-8 px-6 overflow-hidden">
+                {/* Background Pattern & Gradient */}
+                <div className="absolute inset-0 bg-primary/90 dark:bg-background-dark">
+                    <div className="islamic-pattern absolute inset-0 opacity-10 mix-blend-overlay"></div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent"></div>
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center gap-4 text-white">
                     <div className="relative">
                         <div className="size-24 rounded-full border-4 border-gold-accent bg-cover bg-center shadow-lg bg-slate-200"
                             style={{ backgroundImage: user?.picture ? `url('${user.picture}')` : undefined }}
@@ -203,7 +209,7 @@ const Account = () => {
                         </div>
                     </div>
                     <div className="text-center">
-                        <h1 className="text-2xl font-bold tracking-tight">{user?.name || "Guest User"}</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-md">{user?.name || "Guest User"}</h1>
                         <p className="text-white/80 text-sm font-medium">{user?.email || "Sign in to see details"}</p>
                     </div>
                 </div>

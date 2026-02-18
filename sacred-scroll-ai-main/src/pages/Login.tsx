@@ -24,8 +24,8 @@ const Login = () => {
             localStorage.setItem('user_profile', JSON.stringify(data.user));
             navigate('/');
         } catch (err) {
-            console.error("Auth failed", err);
-            setError("Sign-in failed. Please try again.");
+            console.error("Auth failed details:", err);
+            setError("Sign-in failed. Please try again. Check console for details.");
         }
     };
     return (
