@@ -25,9 +25,10 @@ export default defineConfig(({ mode }) => ({
         short_name: 'AlQuran',
         description: 'Your AI-powered Quran companion. Explore the Quran, Hadith, and Islamic guidance.',
         theme_color: '#064E3B',
-        background_color: '#ffffff',
+        background_color: '#064E3B',
         display: 'standalone',
         orientation: 'portrait',
+        categories: ['education', 'lifestyle'],
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -46,7 +47,40 @@ export default defineConfig(({ mode }) => ({
             purpose: 'any maskable'
           }
         ]
-      }
+      },
+      workbox: {
+        navigateFallbackDenylist: [/^\/api\//],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'gstatic-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
+      },
     })
   ].filter(Boolean),
   resolve: {
