@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import Account from "./Account";
 import Sidebar from "@/components/Sidebar";
+import InstallPrompt from "@/components/InstallPrompt";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -477,6 +478,9 @@ const Index = () => {
             )}
           </div>
         </ScrollArea>
+
+        {/* PWA Install Prompt */}
+        <InstallPrompt messageCount={messages.length} />
 
         {/* Input Area */}
         <div className="relative border-t border-primary/10 bg-white/60 px-4 py-4 backdrop-blur-xl dark:border-primary/20 dark:bg-background-dark/80">

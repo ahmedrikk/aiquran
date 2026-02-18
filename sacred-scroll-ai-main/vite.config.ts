@@ -29,6 +29,15 @@ export default defineConfig(({ mode }) => ({
         display: 'standalone',
         orientation: 'portrait',
         categories: ['education', 'lifestyle'],
+        start_url: '/',
+        scope: '/',
+        shortcuts: [
+          {
+            name: 'New Question',
+            short_name: 'Ask',
+            url: '/',
+          }
+        ],
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -49,6 +58,7 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       workbox: {
+        navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
