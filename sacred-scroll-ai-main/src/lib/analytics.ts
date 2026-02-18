@@ -3,7 +3,7 @@ import ReactGA from "react-ga4";
 // Initialize Google Analytics
 export const initGA = () => {
     // Replace with your actual Measurement ID or use an env var
-    const MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || "G-XXXXXXXXXX";
+    const MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || "G-7LRZK6PYTT";
     if (MEASUREMENT_ID && MEASUREMENT_ID !== "G-XXXXXXXXXX") {
         ReactGA.initialize(MEASUREMENT_ID);
         console.log("GA Initialized with ID:", MEASUREMENT_ID);
