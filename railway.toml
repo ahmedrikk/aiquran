@@ -1,0 +1,22 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+
+# ── Non-sensitive defaults (override in Railway dashboard if needed) ──
+[variables]
+LLM_PROVIDER = "groq"
+FRONTEND_URL = "https://quranai.vercel.app"
+DATABASE_URL = "sqlite:///./quranai.db"
+DATA_DIR = "./quran_data"
+JWT_EXPIRY_HOURS = "72"
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
+# ── Set these in Railway dashboard → Variables (never commit real values) ──
+# GROQ_API_KEY        = "gsk_..."
+# GOOGLE_CLIENT_ID    = "846223196875-iim6ake76pqe61tufn3t8rccogqv7ec2.apps.googleusercontent.com"
+# JWT_SECRET          = "generate with: openssl rand -hex 32"
