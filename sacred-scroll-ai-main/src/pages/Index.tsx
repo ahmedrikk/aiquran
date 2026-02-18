@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -109,7 +110,15 @@ const Index = () => {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
   const token = localStorage.getItem("user_token");
+
+  // Auth guard — redirect to login if not authenticated
+  useEffect(() => {
+    if (!token) {
+      navigate("/login", { replace: true });
+    }
+  }, [token, navigate]);
 
   // Toggle dark mode
   useEffect(() => {
@@ -152,7 +161,15 @@ const Index = () => {
       body: JSON.stringify({ message: messageContent, chat_id: currentChatId }),
     });
 
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem("user_token");
+        localStorage.removeItem("user_profile");
+        navigate("/login", { replace: true });
+        throw new Error("Session expired");
+      }
+      throw new Error(`API Error: ${response.status}`);
+    }
     const data = await response.json();
 
     if (data.chat_id && data.chat_id !== currentChatId) {
