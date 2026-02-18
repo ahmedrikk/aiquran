@@ -8,10 +8,7 @@ import { cn } from "@/lib/utils";
 import Account from "./Account";
 import Sidebar from "@/components/Sidebar";
 import InstallPrompt from "@/components/InstallPrompt";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import FormattedMessage from "@/components/FormattedMessage";
 
 // API Configuration — falls back to localhost for local dev
 const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000") + "/api";
@@ -40,63 +37,6 @@ const TOPICS = [
   { name: "Protection", icon: "shield", color: "text-gold-accent" },
 ];
 
-// Markdown renderer with code block highlighting
-const MarkdownRenderer = ({ content }: { content: string }) => (
-  <ReactMarkdown
-    remarkPlugins={[remarkGfm]}
-    components={{
-      pre({ children }) {
-        return <div className="my-3 rounded-xl overflow-hidden text-sm">{children}</div>;
-      },
-      code({ className, children }) {
-        const match = /language-(\w+)/.exec(className || "");
-        if (match) {
-          return (
-            <SyntaxHighlighter
-              language={match[1]}
-              style={oneDark}
-              customStyle={{ margin: 0, borderRadius: "0.75rem", fontSize: "0.8rem" }}
-            >
-              {String(children).replace(/\n$/, "")}
-            </SyntaxHighlighter>
-          );
-        }
-        return (
-          <code className="bg-slate-100 dark:bg-black/30 rounded px-1.5 py-0.5 text-[0.82em] font-mono text-primary dark:text-primary-foreground">
-            {children}
-          </code>
-        );
-      },
-      p({ children }) {
-        return <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>;
-      },
-      ul({ children }) {
-        return <ul className="list-disc pl-5 mb-2 space-y-1">{children}</ul>;
-      },
-      ol({ children }) {
-        return <ol className="list-decimal pl-5 mb-2 space-y-1">{children}</ol>;
-      },
-      li({ children }) {
-        return <li className="leading-relaxed">{children}</li>;
-      },
-      strong({ children }) {
-        return <strong className="font-bold text-primary dark:text-primary-foreground">{children}</strong>;
-      },
-      blockquote({ children }) {
-        return (
-          <blockquote className="border-l-4 border-gold-accent/60 pl-4 italic text-slate-500 dark:text-slate-400 my-2">
-            {children}
-          </blockquote>
-        );
-      },
-      h1({ children }) { return <h1 className="text-xl font-bold text-primary mb-2 mt-3">{children}</h1>; },
-      h2({ children }) { return <h2 className="text-lg font-bold text-primary mb-1 mt-3">{children}</h2>; },
-      h3({ children }) { return <h3 className="text-base font-semibold text-primary mb-1 mt-2">{children}</h3>; },
-    }}
-  >
-    {content}
-  </ReactMarkdown>
-);
 
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -386,7 +326,7 @@ const Index = () => {
                         {/* Message Content */}
                         <div className={cn("text-[15px] leading-relaxed", message.role === "user" ? "text-white" : "text-slate-800 dark:text-slate-200")}>
                           {message.role === "assistant"
-                            ? <MarkdownRenderer content={message.content} />
+                            ? <FormattedMessage content={message.content} />
                             : message.content}
                         </div>
 
