@@ -2,30 +2,30 @@ import { useState } from "react";
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "http://localhost:8000");
+
 const Login = () => {
     const navigate = useNavigate();
+    const [error, setError] = useState<string | null>(null);
 
     const handleLoginSuccess = async (credentialResponse: CredentialResponse) => {
-        if (credentialResponse.credential) {
-            console.log("Google Token:", credentialResponse.credential);
-            // Verify with backend
-            try {
-                const response = await fetch("http://localhost:8000/auth/google", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ credential: credentialResponse.credential }),
-                });
-                const user = await response.json();
-                if (user) {
-                    localStorage.setItem('user_token', credentialResponse.credential);
-                    localStorage.setItem('user_profile', JSON.stringify(user));
-                    navigate('/'); // Redirect to Home
-                }
-            } catch (error) {
-                console.error("Auth failed", error);
-            }
+        if (!credentialResponse.credential) return;
+        setError(null);
+        try {
+            const response = await fetch(`${API_BASE}/auth/google`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ credential: credentialResponse.credential }),
+            });
+            if (!response.ok) throw new Error(`Auth failed: ${response.status}`);
+            const data = await response.json();
+            // data = { access_token, token_type, user: { id, email, name, picture, ... } }
+            localStorage.setItem('user_token', data.access_token);
+            localStorage.setItem('user_profile', JSON.stringify(data.user));
+            navigate('/');
+        } catch (err) {
+            console.error("Auth failed", err);
+            setError("Sign-in failed. Please try again.");
         }
     };
     return (
@@ -98,16 +98,19 @@ const Login = () => {
             </div>
 
             {/* Google Login */}
-            <div className="w-full flex justify-center mb-8">
+            <div className="w-full flex flex-col items-center gap-3 mb-8">
                 <GoogleLogin
                     onSuccess={handleLoginSuccess}
-                    onError={() => console.log('Login Failed')}
+                    onError={() => setError("Google sign-in failed. Please try again.")}
                     theme="filled_blue"
                     shape="pill"
                     text="continue_with"
                     size="large"
                     width="100%"
                 />
+                {error && (
+                    <p className="text-sm text-red-500 font-medium text-center">{error}</p>
+                )}
             </div>
 
             {/* Footer Link */}
