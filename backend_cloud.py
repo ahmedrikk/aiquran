@@ -41,7 +41,7 @@ from auth import (
 # Supports: groq, together, openai — configure via env vars
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")  # groq | together | openai
-LLM_API_KEY = os.getenv("LLM_API_KEY", "")
+LLM_API_KEY = os.getenv("LLM_API_KEY", "") or os.getenv("GROQ_API_KEY", "")
 LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")  # default for Groq
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "")
 
@@ -200,6 +200,7 @@ app.add_middleware(
         "http://localhost:8080",
         "http://127.0.0.1:8080",
         "https://quranai.vercel.app",
+        "https://aiquran-one.vercel.app",
         *( [_extra_origin] if _extra_origin else [] ),
     ],
     allow_credentials=True,
@@ -668,27 +669,11 @@ def get_bookmarks(
                 "role": m.role,
                 "content": m.content,
                 "created_at": m.created_at.isoformat() if m.created_at else None,
-                "chat_id": m.conversation_id,
-                "chat_title": m.conversation.title
+                "chat_id": m.chat_id,
+                "chat_title": m.chat.title
             }
             for m in bookmarks
         ]
-    }
-
-    assistant_msg = add_message(
-        db, chat.id,
-        role="assistant",
-        content=result["response"],
-        thinking=result.get("thinking"),
-        sources=sources,
-    )
-
-    return {
-        "chat_id": chat.id,
-        "message_id": assistant_msg.id,
-        "response": result["response"],
-        "thinking": result.get("thinking", ""),
-        "sources_used": sources,
     }
 
 
