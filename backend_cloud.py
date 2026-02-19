@@ -769,3 +769,54 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/privacy")
+def privacy_policy():
+    from fastapi.responses import HTMLResponse
+    html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — AlQuran AI</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 24px; color: #1e293b; line-height: 1.7; }
+    h1 { color: #007f80; border-bottom: 2px solid #D4AF37; padding-bottom: 12px; }
+    h2 { color: #007f80; margin-top: 36px; }
+    a { color: #007f80; }
+    footer { margin-top: 48px; font-size: 0.8rem; color: #94a3b8; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p><strong>AlQuran AI</strong> — Last Updated: October 2024</p>
+
+  <h2>1. Introduction</h2>
+  <p>Welcome to AlQuran AI ("we," "our," or "us"). We are committed to protecting your privacy and ensuring your personal information is handled in a safe and responsible manner. This Privacy Policy explains how we collect, use, and protect your data.</p>
+
+  <h2>2. Information We Collect</h2>
+  <ul>
+    <li><strong>Account Information:</strong> When you sign in with Google, we collect your name, email address, and profile picture to create your account.</li>
+    <li><strong>Chat History:</strong> We store the conversations you have with our AI to provide you with access to your history and improve the service.</li>
+    <li><strong>Usage Data:</strong> We may collect anonymous data about how you use the app to improve performance and user experience.</li>
+  </ul>
+
+  <h2>3. How We Use Your Information</h2>
+  <p>We use your information to:</p>
+  <ul>
+    <li>Provide, maintain, and improve our services.</li>
+    <li>Personalize your experience (e.g., displaying your name).</li>
+    <li>Respond to your comments and questions.</li>
+  </ul>
+
+  <h2>4. Data Security</h2>
+  <p>We implement appropriate technical and organizational measures to protect your personal data against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the Internet is 100% secure.</p>
+
+  <h2>5. Contact Us</h2>
+  <p>If you have any questions about this Privacy Policy, please contact us at <a href="mailto:support@quranai.com">support@quranai.com</a>.</p>
+
+  <footer>© 2024 AlQuran AI. All rights reserved.</footer>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
