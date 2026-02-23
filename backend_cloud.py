@@ -299,10 +299,13 @@ def format_source_for_context(item: dict) -> str:
 
     elif source_type == "hadith":
         collection = item.get('collection', 'Hadith')
-        hadith_num = item.get('hadith_number', '?')
+        hadith_num = item.get('hadith_number', '')
+        if not hadith_num or str(hadith_num).lower() in ("none", "n/a", "", "na"):
+            hadith_num = None
+        num_str = f" #{hadith_num}" if hadith_num else ""
         grade = item.get('grade', '')
         grade_str = f" [{grade}]" if grade else ""
-        return (f"📜 HADITH - {collection} #{hadith_num}{grade_str}\n"
+        return (f"📜 HADITH - {collection}{num_str}{grade_str}\n"
                 f"   Arabic: {text_ar}\n"
                 f"   English: {text_en}")
 
