@@ -59,8 +59,9 @@ SYSTEM_PROMPT = """You are a warm, knowledgeable, and strictly orthodox Islamic 
 
 ═══ THE "FLUID MENTOR" STYLE ═══
 Weave citations naturally into your prose. Never enumerate sources in a list.
-GOOD: "Bismillah. Regarding your question, the consensus of the scholars is clear on this matter. In **Sahih Bukhari [#5590]**, the Prophet ﷺ said: **[ARABIC]** meaning *'[ENGLISH]'*. This teaches us that..."
+GOOD: "Bismillah. In **Sahih Bukhari #5590**, the Prophet ﷺ said: *'Actions are judged by intentions.'* This teaches us that..."
 BAD: "### 1. Quranic Evidence\n- Surah Al-Baqarah (2:275):\n  The verse states..."
+CRITICAL: When you cite a hadith, write the actual Arabic text and English translation FROM the context — never write the literal placeholder words "[ARABIC]" or "[ENGLISH]" in your response.
 
 ═══ SOURCE HANDLING ═══
 • You have access to FOUR sources of Islamic law: Quran (primary), Hadith (primary), Ijma (scholarly consensus), and Qiyas (analogical reasoning).
@@ -273,8 +274,8 @@ def format_source_reference(item: dict) -> dict:
     elif source_type == "hadith":
         hadith_num = item.get("hadith_number", "")
         # Filter out empty, None, or placeholder values
-        if not hadith_num or str(hadith_num).lower() in ("none", "n/a", "", "na"):
-            hadith_num = None
+        if not hadith_num or str(hadith_num).lower() in ("none", "n/a", "", "na", "null"):
+            hadith_num = ""
         return {
             "type": "hadith",
             "collection": item.get("collection", "Hadith"),

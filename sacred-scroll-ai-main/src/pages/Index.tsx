@@ -348,14 +348,31 @@ const Index = () => {
                               <span className="material-symbols-outlined text-[14px]">menu_book</span> Sources
                             </p>
                             <div className="flex flex-wrap gap-2">
-                              {message.sources.map((src: any, i) => (
-                                <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-gold-accent/10 text-[10px] text-yellow-800 dark:text-gold-accent border border-gold-accent/20">
-                                  {src.type === "quran" ? "📖" : "📜"}
-                                  {src.type === "quran"
-                                    ? `Ayah ${src.surah_name} ${src.verse_number}`
-                                    : `Hadith ${src.collection} #${src.hadith_number}`}
-                                </span>
-                              ))}
+                              {message.sources.map((src: any, i) => {
+                                let label = '';
+                                let icon = '📜';
+                                if (src.type === 'quran') {
+                                  icon = '📖';
+                                  label = `Ayah ${src.surah_name} ${src.verse_number}`;
+                                } else if (src.type === 'hadith') {
+                                  const num = src.hadith_number;
+                                  const numStr = num && String(num).toLowerCase() !== 'null' && String(num).toLowerCase() !== 'n/a' && String(num) !== '' ? ` #${num}` : '';
+                                  label = `Hadith ${src.collection}${numStr}`;
+                                } else if (src.type === 'ijma') {
+                                  icon = '⚖️';
+                                  label = `Ijma: ${src.topic || 'Scholarly Consensus'}`;
+                                } else if (src.type === 'qiyas') {
+                                  icon = '⚖️';
+                                  label = `Qiyas: ${src.case || 'Analogical Reasoning'}`;
+                                } else {
+                                  label = src.text || 'Source';
+                                }
+                                return (
+                                  <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-gold-accent/10 text-[10px] text-yellow-800 dark:text-gold-accent border border-gold-accent/20">
+                                    {icon} {label}
+                                  </span>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
