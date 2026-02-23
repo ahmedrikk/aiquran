@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">AlQuran</string>
     <string name="title_activity_main">AlQuran</string>
-    <string name="package_name">com.alquran.app</string>
-    <string name="custom_url_scheme">com.alquran.app</string>
+    <string name="package_name">com.aiquraan.app</string>
+    <string name="custom_url_scheme">com.aiquraan.app</string>
 </resources>

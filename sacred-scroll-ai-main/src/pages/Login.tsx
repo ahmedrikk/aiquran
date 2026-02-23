@@ -1,33 +1,68 @@
 import { useState } from "react";
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useNavigate } from "react-router-dom";
+import { Capacitor } from '@capacitor/core';
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "http://localhost:8000");
 
 const Login = () => {
     const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const isNative = Capacitor.isNativePlatform();
 
-    const handleLoginSuccess = async (credentialResponse: CredentialResponse) => {
-        if (!credentialResponse.credential) return;
+    const sendCredentialToBackend = async (credential: string) => {
         setError(null);
+        setLoading(true);
         try {
             const response = await fetch(`${API_BASE}/auth/google`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ credential: credentialResponse.credential }),
+                body: JSON.stringify({ credential }),
             });
             if (!response.ok) throw new Error(`Auth failed: ${response.status}`);
             const data = await response.json();
-            // data = { access_token, token_type, user: { id, email, name, picture, ... } }
             localStorage.setItem('user_token', data.access_token);
             localStorage.setItem('user_profile', JSON.stringify(data.user));
             navigate('/');
         } catch (err) {
             console.error("Auth failed details:", err);
-            setError("Sign-in failed. Please try again. Check console for details.");
+            setError("Sign-in failed. Please try again.");
+        } finally {
+            setLoading(false);
         }
     };
+
+    const handleWebLoginSuccess = async (credentialResponse: CredentialResponse) => {
+        if (!credentialResponse.credential) return;
+        await sendCredentialToBackend(credentialResponse.credential);
+    };
+
+    const handleNativeGoogleSignIn = async () => {
+        setError(null);
+        setLoading(true);
+        try {
+            const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+            await GoogleAuth.initialize({
+                clientId: '846223196875-iim6ake76pqe61tufn3t8rccogqv7ec2.apps.googleusercontent.com',
+                scopes: ['profile', 'email'],
+                grantOfflineAccess: true,
+            });
+            const user = await GoogleAuth.signIn();
+            const idToken = user.authentication.idToken;
+            if (!idToken) throw new Error("No ID token received from Google");
+            await sendCredentialToBackend(idToken);
+        } catch (err: unknown) {
+            console.error("Native Google Sign-In error:", err);
+            const message = err instanceof Error ? err.message : String(err);
+            if (!message.includes('cancel') && !message.includes('12501')) {
+                setError("Google sign-in failed. Please try again.");
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12 w-full max-w-md mx-auto">
             {/* Welcome Image/Hero */}
@@ -46,68 +81,37 @@ const Login = () => {
                 <p className="text-slate-600 dark:text-slate-400 text-base">Peace be upon you. Continue your spiritual journey with us.</p>
             </div>
 
-            {/* Login Form */}
-            <form className="w-full space-y-5" onSubmit={(e) => e.preventDefault()}>
-                {/* Email Input */}
-                <div className="flex flex-col w-full">
-                    <label className="text-sm font-semibold text-primary/80 dark:text-primary mb-1.5 ml-1">Email Address</label>
-                    <div className="relative flex items-center group">
-                        <span className="material-symbols-outlined absolute left-4 text-slate-400 group-focus-within:text-primary transition-colors">mail</span>
-                        <input
-                            className="w-full h-14 pl-12 pr-4 rounded-xl border border-slate-200 dark:border-primary/20 bg-white dark:bg-background-dark/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-base"
-                            placeholder="Enter your email"
-                            type="email"
-                        />
-                    </div>
-                </div>
-
-                {/* Password Input */}
-                <div className="flex flex-col w-full">
-                    <div className="flex justify-between items-center mb-1.5 ml-1">
-                        <label className="text-sm font-semibold text-primary/80 dark:text-primary">Password</label>
-                        <a className="text-xs font-bold text-gold-accent hover:underline" href="#">Forgot Password?</a>
-                    </div>
-                    <div className="relative flex items-center group">
-                        <span className="material-symbols-outlined absolute left-4 text-slate-400 group-focus-within:text-primary transition-colors">lock</span>
-                        <input
-                            className="w-full h-14 pl-12 pr-12 rounded-xl border border-slate-200 dark:border-primary/20 bg-white dark:bg-background-dark/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-base"
-                            placeholder="••••••••"
-                            type="password"
-                        />
-                        <button className="absolute right-4 text-slate-400 hover:text-primary" type="button">
-                            <span className="material-symbols-outlined">visibility</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Login Button */}
-                <button
-                    className="w-full h-14 bg-primary text-white font-bold text-lg rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all flex items-center justify-center gap-2 group"
-                    type="submit"
-                >
-                    Sign In
-                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                </button>
-            </form>
-
-            {/* Divider */}
-            <div className="w-full flex items-center my-8">
-                <div className="flex-1 h-px bg-slate-200 dark:bg-primary/10"></div>
-                <span className="px-4 text-xs font-medium text-slate-400 uppercase tracking-widest">or continue with</span>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-primary/10"></div>
-            </div>
-
-            {/* Google Login */}
+            {/* Google Sign-In */}
             <div className="w-full flex flex-col items-center gap-3 mb-8">
-                <GoogleLogin
-                    onSuccess={handleLoginSuccess}
-                    onError={() => setError("Google sign-in failed. Please try again.")}
-                    theme="filled_blue"
-                    shape="pill"
-                    text="continue_with"
-                    size="large"
-                    width="100%"
-                />
+                {isNative ? (
+                    <button
+                        onClick={handleNativeGoogleSignIn}
+                        disabled={loading}
+                        className="w-full h-14 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-base rounded-full shadow hover:shadow-md transition-all flex items-center justify-center gap-3 disabled:opacity-60"
+                    >
+                        {loading ? (
+                            <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                        ) : (
+                            <svg width="20" height="20" viewBox="0 0 48 48">
+                                <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                                <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                                <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                                <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                            </svg>
+                        )}
+                        {loading ? 'Signing in...' : 'Continue with Google'}
+                    </button>
+                ) : (
+                    <GoogleLogin
+                        onSuccess={handleWebLoginSuccess}
+                        onError={() => setError("Google sign-in failed. Please try again.")}
+                        theme="filled_blue"
+                        shape="pill"
+                        text="continue_with"
+                        size="large"
+                        width="100%"
+                    />
+                )}
                 {error && (
                     <p className="text-sm text-red-500 font-medium text-center">{error}</p>
                 )}

@@ -33,12 +33,12 @@
                 <data android:scheme="https" android:host="quranai.vercel.app" />
             </intent-filter>
 
-            <!-- Deep link: com.alquran.app custom scheme -->
+            <!-- Deep link: com.aiquraan.app custom scheme -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.alquran.app" />
+                <data android:scheme="com.aiquraan.app" />
             </intent-filter>
 
         </activity>

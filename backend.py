@@ -29,8 +29,13 @@ from duckduckgo_search import DDGS
 # CONFIGURATION
 # =====================================================
 DATA_DIR = "./quran_data"
-INDEX_PATH = os.path.join(DATA_DIR, "quran_hadith.index")
-METADATA_PATH = os.path.join(DATA_DIR, "metadata.json")
+# Use comprehensive jurisprudence database (Quran + Hadith + Ijma + Qiyas)
+INDEX_PATH = os.path.join(DATA_DIR, "jurisprudence.index")
+METADATA_PATH = os.path.join(DATA_DIR, "jurisprudence_metadata.json")
+# Fallback to old database if new one doesn't exist
+if not os.path.exists(INDEX_PATH):
+    INDEX_PATH = os.path.join(DATA_DIR, "quran_hadith.index")
+    METADATA_PATH = os.path.join(DATA_DIR, "metadata.json")
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384
 
@@ -44,7 +49,7 @@ llm = ChatOllama(
 # =====================================================
 # THE "FLUID MENTOR" SYSTEM PROMPT
 # =====================================================
-SYSTEM_PROMPT = """You are a warm, knowledgeable, and strictly orthodox Islamic scholar (aligned with the four Sunni Madhabs). Your goal is to guide the user with accuracy (Haqq) and compassion (Rahmah).
+SYSTEM_PROMPT = """You are a warm, knowledgeable, and strictly orthodox Islamic scholar aligned with the four Sunni Madhabs (Hanafi, Maliki, Shafi'i, Hanbali). You have access to the complete Usul al-Fiqh: Quran, Hadith (all major collections), Ijma (scholarly consensus), and Qiyas (analogical reasoning). Your goal is to guide the user with accuracy (Haqq) and compassion (Rahmah).
 
 ═══ FORMATTING RULES (MANDATORY — NEVER BREAK THESE) ═══
 • NEVER use markdown headers (# ## ###), numbered lists (1. 2. 3.), bullet points (- *), or horizontal rules (---).
@@ -58,9 +63,12 @@ GOOD: "Bismillah. Regarding your question, the consensus of the scholars is clea
 BAD: "### 1. Quranic Evidence\n- Surah Al-Baqarah (2:275):\n  The verse states..."
 
 ═══ SOURCE HANDLING ═══
-• Always prioritize the LOCAL QURAN/HADITH context provided to you.
-• If local context is insufficient, use EXTERNAL SCHOLARLY RESOURCES but cite the website explicitly (e.g., "According to a ruling referenced from IslamQA...").
-• If NO sources are found: say *"My library doesn't have the specific text for this right now, but the general scholarly consensus is..."* then give the ruling from consensus.
+• You have access to FOUR sources of Islamic law: Quran (primary), Hadith (primary), Ijma (scholarly consensus), and Qiyas (analogical reasoning).
+• Always prioritize the LOCAL sources provided in the context.
+• For Ijma sources: cite them as "The consensus (Ijma) of the scholars is..."
+• For Qiyas sources: explain the analogy when relevant - "By analogy (Qiyas) to the case of..."
+• If local context is insufficient, use EXTERNAL SCHOLARLY RESOURCES but cite the website explicitly.
+• If NO sources are found: say *"My library doesn't have the specific text for this right now, but the general scholarly consensus is..."* then give the ruling.
 
 ═══ ANTI-HALLUCINATION PROTOCOL (CRITICAL) ═══
 • NEVER quote or cite a Quran verse or Hadith that is NOT in the provided context. Fabricating religious text is a MAJOR SIN.
@@ -188,7 +196,9 @@ with open(METADATA_PATH, 'r', encoding='utf-8') as f:
 
 quran_count = sum(1 for m in metadata if m.get("source_type") == "quran")
 hadith_count = sum(1 for m in metadata if m.get("source_type") == "hadith")
-print(f"✅ Backend ready! Quran: {quran_count}, Hadith: {hadith_count}")
+ijma_count = sum(1 for m in metadata if m.get("source_type") == "ijma")
+qiyas_count = sum(1 for m in metadata if m.get("source_type") == "qiyas")
+print(f"✅ Backend ready! Quran: {quran_count}, Hadith: {hadith_count}, Ijma: {ijma_count}, Qiyas: {qiyas_count}")
 
 
 # =====================================================
@@ -201,24 +211,81 @@ def retrieve_sources(query: str, k: int = 5) -> list[dict]:
 
 
 def format_source_for_context(item: dict) -> str:
+    """Format source for LLM context with proper labeling."""
     text_ar = item.get('text_ar') or "[Arabic unavailable]"
     text_en = item.get('text_en') or "[English unavailable]"
+    source_type = item.get("source_type", "unknown")
     
-    if item.get("source_type") == "quran":
-        return (f"📖 Quran {item['surah_name']} [{item.get('surah_number', '?')}:{item['verse_number']}]\n"
+    if source_type == "quran":
+        return (f"📖 QURAN {item['surah_name']} [{item.get('surah_number', '?')}:{item['verse_number']}]\n"
+                f"   Arabic: {text_ar}\n"
+                f"   Translation: {text_en}")
+    
+    elif source_type == "hadith":
+        collection = item.get('collection', 'Hadith')
+        hadith_num = item.get('hadith_number', '?')
+        grade = item.get('grade', '')
+        grade_str = f" [{grade}]" if grade else ""
+        return (f"📜 HADITH - {collection} #{hadith_num}{grade_str}\n"
                 f"   Arabic: {text_ar}\n"
                 f"   English: {text_en}")
+    
+    elif source_type == "ijma":
+        topic = item.get('topic', 'Unknown Topic')
+        schools = ', '.join(item.get('schools', []))
+        return (f"⚖️ IJMA (SCHOLARLY CONSENSUS) - {topic}\n"
+                f"   Consensus of: {schools}\n"
+                f"   Ruling: {item.get('ruling', text_en)}")
+    
+    elif source_type == "qiyas":
+        case = item.get('case', 'Unknown Case')
+        return (f"⚖️ QIYAS (ANALOGICAL REASONING) - {case}\n"
+                f"   Original Case: {item.get('original_case', '')}\n"
+                f"   New Case: {item.get('new_case', '')}\n"
+                f"   Effective Cause ('Illah): {item.get('effective_cause', '')}\n"
+                f"   Reasoning: {item.get('reasoning', text_en)}")
+    
     else:
-        return (f"📜 {item['collection']} Hadith #{item['hadith_number']}\n"
-                f"   Arabic: {text_ar}\n"
-                f"   English: {text_en}")
+        return f"📄 SOURCE: {text_en}"
 
 
 def format_source_reference(item: dict) -> dict:
-    if item.get("source_type") == "quran":
-        return {"type": "quran", "surah_name": item["surah_name"], "verse_number": item["verse_number"]}
-    else:
-        return {"type": "hadith", "collection": item["collection"], "hadith_number": item["hadith_number"]}
+    """Format source reference for frontend display badges."""
+    source_type = item.get("source_type", "unknown")
+    
+    if source_type == "quran":
+        return {
+            "type": "quran",
+            "surah_name": item.get("surah_name", "Unknown"),
+            "verse_number": item.get("verse_number", "?")
+        }
+    
+    elif source_type == "hadith":
+        hadith_num = item.get("hadith_number", "")
+        # Filter out empty, None, or placeholder values
+        if not hadith_num or str(hadith_num).lower() in ("none", "n/a", "", "na"):
+            hadith_num = None
+        return {
+            "type": "hadith",
+            "collection": item.get("collection", "Hadith"),
+            "hadith_number": hadith_num
+        }
+    
+    elif source_type == "ijma":
+        return {
+            "type": "ijma",
+            "topic": item.get("topic", "Scholarly Consensus"),
+            "category": item.get("category", "general")
+        }
+    
+    elif source_type == "qiyas":
+        return {
+            "type": "qiyas",
+            "case": item.get("case", "Analogical Reasoning"),
+            "category": item.get("category", "general")
+        }
+    
+    return {"type": "unknown", "text": str(item.get("text_en", ""))[:50]}
 
 
 def format_history_for_prompt(history: list[dict]) -> str:
@@ -238,11 +305,27 @@ def format_history_for_prompt(history: list[dict]) -> str:
 # RESPONSE GENERATION (with Web Fallback)
 # =====================================================
 def generate_response(query: str, sources: list[dict], history: list[dict]) -> dict:
-    # Format local context
+    # Format local context with all source types
     if sources:
-        local_context = "📚 LOCAL QURAN/HADITH SOURCES:\n" + "\n\n".join([format_source_for_context(s) for s in sources])
+        # Group sources by type for better organization
+        quran_sources = [s for s in sources if s.get("source_type") == "quran"]
+        hadith_sources = [s for s in sources if s.get("source_type") == "hadith"]
+        ijma_sources = [s for s in sources if s.get("source_type") == "ijma"]
+        qiyas_sources = [s for s in sources if s.get("source_type") == "qiyas"]
+        
+        context_parts = []
+        if quran_sources:
+            context_parts.append("📖 QURANIC SOURCES:\n" + "\n\n".join([format_source_for_context(s) for s in quran_sources]))
+        if hadith_sources:
+            context_parts.append("📜 HADITH SOURCES:\n" + "\n\n".join([format_source_for_context(s) for s in hadith_sources]))
+        if ijma_sources:
+            context_parts.append("⚖️ SCHOLARLY CONSENSUS (IJMA):\n" + "\n\n".join([format_source_for_context(s) for s in ijma_sources]))
+        if qiyas_sources:
+            context_parts.append("⚖️ ANALOGICAL REASONING (QIYAS):\n" + "\n\n".join([format_source_for_context(s) for s in qiyas_sources]))
+        
+        local_context = "\n\n".join(context_parts)
     else:
-        local_context = "📚 LOCAL QURAN/HADITH SOURCES:\n[No directly matching sources found in local database]"
+        local_context = "📚 LOCAL SOURCES:\n[No directly matching sources found in local database]"
     
     # Web fallback if local sources are weak
     web_context = ""
@@ -268,10 +351,16 @@ Respond as the Fluid Mentor, weaving citations naturally into your answer."""
         # Fallback: just show sources
         fallback = "Bismillah. Here are the most relevant sources:\n\n"
         for s in sources:
-            if s.get("source_type") == "quran":
+            source_type = s.get("source_type", "unknown")
+            if source_type == "quran":
                 fallback += f"📖 **{s['surah_name']}:{s['verse_number']}**\n"
-            else:
-                fallback += f"📜 **{s['collection']} #{s['hadith_number']}**\n"
+            elif source_type == "hadith":
+                hadith_num = s.get('hadith_number', '?')
+                fallback += f"📜 **{s['collection']} #{hadith_num}**\n"
+            elif source_type == "ijma":
+                fallback += f"⚖️ **Ijma: {s.get('topic', 'Scholarly Consensus')}**\n"
+            elif source_type == "qiyas":
+                fallback += f"⚖️ **Qiyas: {s.get('case', 'Analogical Reasoning')}**\n"
             
             text_en = s.get('text_en', '')
             text = text_en[:400] + "..." if len(text_en) > 400 else text_en
@@ -298,11 +387,14 @@ def handle_small_talk(query: str, history: list[dict]) -> dict:
 def root():
     return {
         "status": "ok",
-        "message": "Quran-Talk API v5.0 - Connected Scholar",
+        "message": "Quran-Talk API v6.0 - Complete Usul al-Fiqh",
         "quran_verses": quran_count,
         "hadith_count": hadith_count,
+        "ijma_records": ijma_count,
+        "qiyas_cases": qiyas_count,
         "total_indexed": len(metadata),
-        "features": ["ChatOllama", "DuckDuckGo Fallback", "Fluid Mentor Persona"]
+        "features": ["ChatOllama", "DuckDuckGo Fallback", "Complete Jurisprudence (Quran, Hadith, Ijma, Qiyas)"],
+        "source_types": ["quran", "hadith", "ijma", "qiyas"]
     }
 
 
