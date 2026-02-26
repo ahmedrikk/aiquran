@@ -453,13 +453,27 @@ const Index = () => {
                 </motion.div>
 
                 {/* Welcome Message */}
-                <div className="py-8 text-center">
-                  <h2 className="mb-2 font-display text-3xl font-bold text-primary dark:text-primary">Assalamu Alaikum ✨</h2>
-                  <p className="text-slate-600 dark:text-slate-400">Welcome to AlQuran. How may I assist your spiritual journey today?</p>
-                  {isGuest && (
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-500">
-                      Try 2 questions for free, then sign in to continue.
-                    </p>
+                <div className="py-8 text-center max-w-xl mx-auto">
+                  <h2 className="mb-3 font-display text-3xl font-bold text-primary dark:text-primary">Assalamu Alaikum ✨</h2>
+                  
+                  {isGuest ? (
+                    <>
+                      <p className="text-slate-600 dark:text-slate-400">
+                        Welcome to AlQuran. How may I assist your spiritual journey today?
+                      </p>
+                      <p className="mt-2 text-sm text-slate-500 dark:text-slate-500">
+                        Try 2 questions for free, then sign in to continue.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-slate-600 dark:text-slate-400 mb-2">
+                        Welcome back! I'm your AI Islamic scholar, grounded in the Quran, Hadith, and classical scholarship.
+                      </p>
+                      <p className="text-sm text-slate-500 dark:text-slate-500">
+                        Ask me about Islamic rulings, Quranic verses, Hadith, or any questions about your faith journey.
+                      </p>
+                    </>
                   )}
                 </div>
 
