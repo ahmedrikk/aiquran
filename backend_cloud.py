@@ -224,10 +224,12 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:8080",
         "http://127.0.0.1:8080",
-        "https://quranai.vercel.app",
+        "https://aiquran.live",           # Production custom domain
+        "https://www.aiquran.live",       # WWW redirect
+        "https://quranai.vercel.app",     # Old domain (remove later)
         "https://aiquran-one.vercel.app",
-        "https://localhost",       # Capacitor Android WebView origin
-        "capacitor://localhost",   # Capacitor iOS WebView origin
+        "https://localhost",              # Capacitor Android WebView origin
+        "capacitor://localhost",          # Capacitor iOS WebView origin
         *( [_extra_origin] if _extra_origin else [] ),
     ],
     allow_credentials=True,

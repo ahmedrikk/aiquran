@@ -10,7 +10,7 @@ restartPolicyType = "ON_FAILURE"
 # ── Non-sensitive defaults (override in Railway dashboard if needed) ──
 [variables]
 LLM_PROVIDER = "groq"
-FRONTEND_URL = "https://quranai.vercel.app"
+FRONTEND_URL = "https://aiquran.live"
 DATABASE_URL = "sqlite:///./quranai.db"
 DATA_DIR = "./quran_data"
 JWT_EXPIRY_HOURS = "72"
