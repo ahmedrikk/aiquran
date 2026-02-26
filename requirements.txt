@@ -1,4 +1,4 @@
-# Quran-Talk - Minimal Requirements (Open WebUI Edition)
+# Quran-Talk Backend Requirements (OpenRouter Edition)
 
 # Backend API
 fastapi>=0.115.0
@@ -10,13 +10,19 @@ hnswlib>=0.8.0
 sentence-transformers>=3.0.0
 numpy>=2.0.0
 
-# LLM
-langchain-ollama>=0.2.0
+# LLM (OpenRouter)
+openai>=1.30.0
 
 # Web Fallback
 duckduckgo-search>=6.0.0
 requests>=2.32.0
 
-# Only needed if rebuilding database
-# datasets>=3.0.0
-# tqdm>=4.66.0
+# Data Processing (for rebuilding database)
+datasets>=3.0.0
+tqdm>=4.66.0
+
+# Environment
+python-dotenv>=1.0.1
+
+# Scraping (optional)
+beautifulsoup4>=4.12.0
