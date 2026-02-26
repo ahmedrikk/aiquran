@@ -76,8 +76,8 @@ def format_source_reference(item: dict) -> dict:
 
     elif source_type == "hadith":
         hadith_num = item.get("hadith_number", "")
-        if not hadith_num or str(hadith_num).lower() in ("none", "n/a", "", "na"):
-            hadith_num = None
+        if not hadith_num or str(hadith_num).lower() in ("none", "n/a", "", "na", "null"):
+            hadith_num = ""
         return {
             "type": "hadith",
             "collection": item.get("collection", "Hadith"),
@@ -265,13 +265,13 @@ class TestFormatSourceReference(unittest.TestCase):
 
     def test_hadith_number_none(self):
         item = {"source_type": "hadith", "collection": "Bukhari", "hadith_number": None}
-        self.assertIsNone(format_source_reference(item)["hadith_number"])
+        self.assertEqual(format_source_reference(item)["hadith_number"], "")
 
     def test_hadith_number_na_variants(self):
-        for val in ("N/A", "n/a", "NA", "na", "none", "None", ""):
+        for val in ("N/A", "n/a", "NA", "na", "none", "None", "", "null", "NULL"):
             item = {"source_type": "hadith", "collection": "Bukhari", "hadith_number": val}
             ref = format_source_reference(item)
-            self.assertIsNone(ref["hadith_number"], f"Expected None for {val!r}")
+            self.assertEqual(ref["hadith_number"], "", f"Expected empty string for {val!r}")
 
     def test_hadith_missing_collection(self):
         ref = format_source_reference({"source_type": "hadith", "hadith_number": 1})
