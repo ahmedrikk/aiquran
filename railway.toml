@@ -9,7 +9,7 @@ restartPolicyType = "ON_FAILURE"
 
 # ── Non-sensitive defaults (override in Railway dashboard if needed) ──
 [variables]
-LLM_PROVIDER = "groq"
+OPENROUTER_MODEL = "qwen/qwen3-vl-30b-a3b-thinking"
 FRONTEND_URL = "https://aiquran.live"
 DATABASE_URL = "sqlite:///./quranai.db"
 DATA_DIR = "./quran_data"
@@ -17,6 +17,6 @@ JWT_EXPIRY_HOURS = "72"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 # ── Set values for these in Railway dashboard → Variables ──────────────
-GROQ_API_KEY = ""
+OPENROUTER_API_KEY = ""
 GOOGLE_CLIENT_ID = ""
 JWT_SECRET = ""
