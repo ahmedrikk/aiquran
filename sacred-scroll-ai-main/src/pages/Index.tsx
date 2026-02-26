@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -58,8 +59,11 @@ const Index = () => {
   const [refreshSidebarTrigger, setRefreshSidebarTrigger] = useState(0);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [guestQueriesUsed, setGuestQueriesUsed] = useState(0);
   const [isGuest, setIsGuest] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -70,6 +74,43 @@ const Index = () => {
   useEffect(() => {
     setIsGuest(!token);
   }, [token]);
+
+  // Handle Google auth success
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) return;
+    
+    setIsAuthenticating(true);
+    setAuthError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL.replace('/api', '')}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: credentialResponse.credential }),
+      });
+      
+      if (!response.ok) throw new Error(`Auth failed: ${response.status}`);
+      
+      const data = await response.json();
+      localStorage.setItem('user_token', data.access_token);
+      localStorage.setItem('user_profile', JSON.stringify(data.user));
+      
+      // Close modal and refresh state
+      setShowAuthModal(false);
+      setShowLoginModal(false);
+      setIsGuest(false);
+      window.location.reload(); // Refresh to load chat history
+    } catch (err) {
+      console.error("Auth failed:", err);
+      setAuthError("Sign-in failed. Please try again.");
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setAuthError("Google sign-in failed. Please try again.");
+  };
 
   // Load guest query count from localStorage
   useEffect(() => {
@@ -306,8 +347,74 @@ const Index = () => {
 
   const lastAssistantIdx = messages.map(m => m.role).lastIndexOf("assistant");
 
-  // Gemini-style Login Modal
-  const LoginModal = () => (
+  // Auth Modal - Kimi/Claude style inline auth
+  const AuthModal = () => (
+    <AnimatePresence>
+      {showAuthModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowAuthModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="bg-white dark:bg-card-dark rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-primary/10"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-2xl text-primary">auto_awesome</span>
+              </div>
+              
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                Sign in to AlQuran
+              </h2>
+              
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                Access your chat history, bookmarks, and unlimited questions.
+              </p>
+              
+              {isAuthenticating ? (
+                <div className="flex items-center justify-center gap-2 py-3">
+                  <span className="material-symbols-outlined animate-spin text-primary">progress_activity</span>
+                  <span className="text-sm text-slate-600">Connecting...</span>
+                </div>
+              ) : (
+                <div className="flex justify-center">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    theme="filled_blue"
+                    shape="pill"
+                    text="continue_with"
+                    size="large"
+                  />
+                </div>
+              )}
+              
+              {authError && (
+                <p className="mt-4 text-sm text-red-500">{authError}</p>
+              )}
+              
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="mt-6 text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  // Gemini-style Login Modal (for after 2 free queries)
+  const LoginPromptModal = () => (
     <AnimatePresence>
       {showLoginModal && (
         <motion.div
@@ -334,7 +441,10 @@ const Index = () => {
               </p>
               <div className="flex flex-col gap-3">
                 <Button 
-                  onClick={() => navigate("/login")}
+                  onClick={() => {
+                    setShowLoginModal(false);
+                    setShowAuthModal(true);
+                  }}
                   className="w-full bg-primary text-white hover:bg-primary/90 py-6 text-lg font-semibold rounded-xl"
                 >
                   Sign in with Google
@@ -411,12 +521,12 @@ const Index = () => {
                 <span className="material-symbols-outlined">{isDarkMode ? "light_mode" : "dark_mode"}</span>
               </Button>
               
-              {/* Gemini-style Login button */}
+              {/* Kimi/Claude style Sign in button */}
               {isGuest ? (
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => navigate("/login")}
+                  onClick={() => setShowAuthModal(true)}
                   className="ml-2 rounded-full px-4 border-primary/20 text-primary hover:bg-primary/10 font-medium"
                 >
                   Sign in
@@ -662,7 +772,8 @@ const Index = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white">
-      <LoginModal />
+      <AuthModal />
+      <LoginPromptModal />
       
       {token && (
         <Sidebar
@@ -698,7 +809,7 @@ const Index = () => {
               <span className="text-[10px] font-bold">Account</span>
             </button>
           ) : (
-            <button onClick={() => navigate("/login")} className="flex flex-col items-center gap-1 p-2 text-slate-400">
+            <button onClick={() => setShowAuthModal(true)} className="flex flex-col items-center gap-1 p-2 text-slate-400">
               <span className="material-symbols-outlined">login</span>
               <span className="text-[10px] font-bold">Sign in</span>
             </button>
