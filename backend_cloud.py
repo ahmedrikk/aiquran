@@ -664,6 +664,62 @@ def send_message_to_chat(
     return _process_message(db, chat, body.message)
 
 
+# Guest query counter (in-memory, per server instance)
+# For production, use Redis or similar
+guest_query_counts = {}
+
+
+class GuestChatRequest(BaseModel):
+    message: str
+    guest_id: Optional[str] = None  # Client-generated guest ID
+
+
+@app.post("/api/chat/guest")
+def guest_chat(
+    body: GuestChatRequest,
+    db=Depends(get_db_session)
+):
+    """
+    Guest chat endpoint - no auth required.
+    Allows 2 free queries per guest (tracked by guest_id).
+    """
+    guest_id = body.guest_id or "anonymous"
+    
+    # Check query count
+    current_count = guest_query_counts.get(guest_id, 0)
+    if current_count >= 2:
+        return {
+            "response": "",
+            "limit_reached": True,
+            "message": "Please sign in to continue. You have used your 2 free questions.",
+            "queries_used": current_count,
+            "queries_remaining": 0
+        }
+    
+    # Generate response without saving to database
+    history = []
+    
+    if is_small_talk(body.message):
+        result = handle_small_talk(body.message, history)
+        sources = []
+    else:
+        sources_data = retrieve_sources(body.message, k=5)
+        result = generate_response(body.message, sources_data, history)
+        sources = [format_source_reference(s) for s in sources_data] if result["success"] else []
+    
+    # Increment counter
+    guest_query_counts[guest_id] = current_count + 1
+    
+    return {
+        "response": result["response"],
+        "thinking": result.get("thinking", ""),
+        "sources_used": sources,
+        "limit_reached": False,
+        "queries_used": current_count + 1,
+        "queries_remaining": 2 - (current_count + 1)
+    }
+
+
 @app.post("/api/chat")
 def send_message(
     body: ChatMessageRequest,
@@ -671,7 +727,7 @@ def send_message(
     db=Depends(get_db_session)
 ):
     """
-    Main chat endpoint.
+    Main chat endpoint (requires authentication).
     If chat_id is provided, continues that chat.
     If not, creates a new chat.
     Returns the assistant response + chat_id.

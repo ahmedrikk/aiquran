@@ -37,6 +37,15 @@ const TOPICS = [
   { name: "Protection", icon: "shield", color: "text-gold-accent" },
 ];
 
+// Guest ID generation
+const getGuestId = () => {
+  let guestId = localStorage.getItem("guest_id");
+  if (!guestId) {
+    guestId = "guest_" + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem("guest_id", guestId);
+  }
+  return guestId;
+};
 
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -48,18 +57,27 @@ const Index = () => {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [refreshSidebarTrigger, setRefreshSidebarTrigger] = useState(0);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [guestQueriesUsed, setGuestQueriesUsed] = useState(0);
+  const [isGuest, setIsGuest] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
   const token = localStorage.getItem("user_token");
 
-  // Auth guard — redirect to login if not authenticated
+  // Check if user is logged in
   useEffect(() => {
-    if (!token) {
-      navigate("/login", { replace: true });
+    setIsGuest(!token);
+  }, [token]);
+
+  // Load guest query count from localStorage
+  useEffect(() => {
+    const savedCount = localStorage.getItem("guest_queries_used");
+    if (savedCount) {
+      setGuestQueriesUsed(parseInt(savedCount, 10));
     }
-  }, [token, navigate]);
+  }, []);
 
   // Toggle dark mode
   useEffect(() => {
@@ -74,6 +92,10 @@ const Index = () => {
   }, [messages]);
 
   const loadChat = async (chatId: string) => {
+    if (!token) {
+      setShowLoginModal(true);
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/chats/${chatId}`, {
@@ -92,7 +114,25 @@ const Index = () => {
     }
   };
 
-  const callChat = async (messageContent: string): Promise<void> => {
+  const callGuestChat = async (messageContent: string): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/chat/guest`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ 
+        message: messageContent, 
+        guest_id: getGuestId() 
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+    return response.json();
+  };
+
+  const callAuthChat = async (messageContent: string): Promise<any> => {
     const response = await fetch(`${API_BASE_URL}/chat`, {
       method: "POST",
       headers: {
@@ -106,23 +146,22 @@ const Index = () => {
       if (response.status === 401) {
         localStorage.removeItem("user_token");
         localStorage.removeItem("user_profile");
-        navigate("/login", { replace: true });
+        setIsGuest(true);
         throw new Error("Session expired");
       }
       throw new Error(`API Error: ${response.status}`);
     }
-    const data = await response.json();
-
-    if (data.chat_id && data.chat_id !== currentChatId) {
-      setCurrentChatId(data.chat_id);
-      setRefreshSidebarTrigger(prev => prev + 1);
-    }
-
-    return data;
+    return response.json();
   };
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
+
+    // If guest has used 2 queries, show login modal
+    if (isGuest && guestQueriesUsed >= 2) {
+      setShowLoginModal(true);
+      return;
+    }
 
     const tempId = Date.now().toString();
     const userMessage: Message = { id: tempId, role: "user", content: input.trim() };
@@ -132,7 +171,31 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const data: any = await callChat(userMessage.content);
+      let data: any;
+      
+      if (isGuest) {
+        data = await callGuestChat(userMessage.content);
+        
+        // Update guest query count
+        if (data.queries_used) {
+          setGuestQueriesUsed(data.queries_used);
+          localStorage.setItem("guest_queries_used", data.queries_used.toString());
+        }
+        
+        // Check if limit reached
+        if (data.limit_reached) {
+          setShowLoginModal(true);
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        data = await callAuthChat(userMessage.content);
+        
+        if (data.chat_id && data.chat_id !== currentChatId) {
+          setCurrentChatId(data.chat_id);
+          setRefreshSidebarTrigger(prev => prev + 1);
+        }
+      }
 
       const assistantMessage: Message = {
         id: data.message_id || (Date.now() + 1).toString(),
@@ -140,7 +203,7 @@ const Index = () => {
         content: data.response,
         thinking: data.thinking,
         sources: data.sources_used,
-        is_bookmarked: data.is_bookmarked
+        is_bookmarked: data.is_bookmarked || false
       };
 
       setMessages(prev => {
@@ -163,12 +226,15 @@ const Index = () => {
 
   const handleRegenerate = async () => {
     if (isLoading) return;
+    
+    if (isGuest && guestQueriesUsed >= 2) {
+      setShowLoginModal(true);
+      return;
+    }
 
-    // Find the last user message
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
     if (!lastUserMsg) return;
 
-    // Drop the last assistant message from the UI
     setMessages(prev => {
       const idx = prev.map(m => m.role).lastIndexOf("assistant");
       return idx === -1 ? prev : prev.filter((_, i) => i !== idx);
@@ -176,7 +242,17 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      const data: any = await callChat(lastUserMsg.content);
+      let data: any;
+      
+      if (isGuest) {
+        data = await callGuestChat(lastUserMsg.content);
+        if (data.queries_used) {
+          setGuestQueriesUsed(data.queries_used);
+          localStorage.setItem("guest_queries_used", data.queries_used.toString());
+        }
+      } else {
+        data = await callAuthChat(lastUserMsg.content);
+      }
 
       const assistantMessage: Message = {
         id: data.message_id || Date.now().toString(),
@@ -196,7 +272,10 @@ const Index = () => {
   };
 
   const handleBookmark = async (messageId: string) => {
-    if (!token) return;
+    if (!token) {
+      setShowLoginModal(true);
+      return;
+    }
 
     setMessages(prev => prev.map(msg =>
       msg.id === messageId ? { ...msg, is_bookmarked: !msg.is_bookmarked } : msg
@@ -209,9 +288,6 @@ const Index = () => {
       });
     } catch (error) {
       console.error("Failed to toggle bookmark", error);
-      setMessages(prev => prev.map(msg =>
-        msg.id === messageId ? { ...msg, is_bookmarked: !msg.is_bookmarked } : msg
-      ));
     }
   };
 
@@ -228,8 +304,55 @@ const Index = () => {
     }
   };
 
-  // Index of the last assistant message (for regenerate button)
   const lastAssistantIdx = messages.map(m => m.role).lastIndexOf("assistant");
+
+  // Gemini-style Login Modal
+  const LoginModal = () => (
+    <AnimatePresence>
+      {showLoginModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShowLoginModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-white dark:bg-card-dark rounded-2xl p-8 max-w-md w-full shadow-2xl border border-primary/10"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-3xl text-primary">auto_awesome</span>
+              </div>
+              <h2 className="text-2xl font-bold text-primary mb-2">Continue Your Journey</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-6">
+                You've used your 2 free questions. Sign in to continue exploring Islamic knowledge and save your chat history.
+              </p>
+              <div className="flex flex-col gap-3">
+                <Button 
+                  onClick={() => navigate("/login")}
+                  className="w-full bg-primary text-white hover:bg-primary/90 py-6 text-lg font-semibold rounded-xl"
+                >
+                  Sign in with Google
+                </Button>
+                <Button 
+                  variant="ghost"
+                  onClick={() => setShowLoginModal(false)}
+                  className="text-slate-500 hover:text-slate-700"
+                >
+                  Maybe later
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   const renderContent = () => {
     if (activeTab === "account") {
@@ -238,14 +361,16 @@ const Index = () => {
 
     return (
       <div className="flex flex-col h-full bg-background-light dark:bg-background-dark relative">
-        {/* Header */}
+        {/* Header - Gemini Style */}
         <header className="relative z-10 border-b border-primary/10 bg-white/80 backdrop-blur-sm dark:border-primary/20 dark:bg-background-dark/80">
           <div className="islamic-pattern absolute inset-0 opacity-5" />
           <div className="relative flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)} className="text-primary hover:bg-primary/10">
-                <span className="material-symbols-outlined">menu</span>
-              </Button>
+              {token && (
+                <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)} className="text-primary hover:bg-primary/10">
+                  <span className="material-symbols-outlined">menu</span>
+                </Button>
+              )}
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
                   <span className="material-symbols-outlined text-primary text-xl">auto_awesome</span>
@@ -253,13 +378,59 @@ const Index = () => {
                 <h1 className="text-lg font-extrabold text-primary dark:text-primary">AlQuran</h1>
               </div>
             </div>
+            
+            {/* Right side - Gemini style minimal login */}
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => { setMessages([]); setCurrentChatId(null); }} className="text-primary hover:bg-primary/10 lg:hidden">
-                <span className="material-symbols-outlined">add_comment</span>
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => setIsDarkMode(!isDarkMode)} className="text-primary hover:bg-primary/10">
+              {/* Guest query counter */}
+              {isGuest && (
+                <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
+                  {2 - guestQueriesUsed} free {2 - guestQueriesUsed === 1 ? 'question' : 'questions'} left
+                </span>
+              )}
+              
+              {/* New Chat button - only show for logged in users */}
+              {token && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => { setMessages([]); setCurrentChatId(null); }} 
+                  className="text-primary hover:bg-primary/10"
+                  title="New chat"
+                >
+                  <span className="material-symbols-outlined">edit</span>
+                </Button>
+              )}
+              
+              {/* Theme toggle */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsDarkMode(!isDarkMode)} 
+                className="text-primary hover:bg-primary/10"
+              >
                 <span className="material-symbols-outlined">{isDarkMode ? "light_mode" : "dark_mode"}</span>
               </Button>
+              
+              {/* Gemini-style Login button */}
+              {isGuest ? (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate("/login")}
+                  className="ml-2 rounded-full px-4 border-primary/20 text-primary hover:bg-primary/10 font-medium"
+                >
+                  Sign in
+                </Button>
+              ) : (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setActiveTab("account")}
+                  className="ml-2 text-primary hover:bg-primary/10"
+                >
+                  <span className="material-symbols-outlined">account_circle</span>
+                </Button>
+              )}
             </div>
           </div>
         </header>
@@ -285,6 +456,11 @@ const Index = () => {
                 <div className="py-8 text-center">
                   <h2 className="mb-2 font-display text-3xl font-bold text-primary dark:text-primary">Assalamu Alaikum ✨</h2>
                   <p className="text-slate-600 dark:text-slate-400">Welcome to AlQuran. How may I assist your spiritual journey today?</p>
+                  {isGuest && (
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-500">
+                      Try 2 questions for free, then sign in to continue.
+                    </p>
+                  )}
                 </div>
 
                 {/* Topics Grid */}
@@ -404,12 +580,12 @@ const Index = () => {
                               </Button>
                             )}
 
-                            {/* Bookmark */}
+                            {/* Bookmark — requires login */}
                             <Button
                               variant="ghost" size="icon"
                               className={cn("h-7 w-7", message.is_bookmarked ? "text-gold-accent" : "text-slate-400 hover:text-gold-accent")}
                               onClick={() => handleBookmark(message.id)}
-                              title={message.is_bookmarked ? "Remove Bookmark" : "Save to Bookmarks"}
+                              title={token ? (message.is_bookmarked ? "Remove Bookmark" : "Save to Bookmarks") : "Sign in to bookmark"}
                             >
                               <span
                                 className="material-symbols-outlined text-[16px]"
@@ -448,11 +624,16 @@ const Index = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Bismillah... Ask your question"
-                className="min-h-[44px] flex-1 resize-none border-0 bg-transparent text-slate-800 placeholder:text-slate-400 focus-visible:ring-0 dark:text-slate-200"
+                placeholder={isGuest && guestQueriesUsed >= 2 ? "Sign in to continue..." : "Bismillah... Ask your question"}
+                disabled={isGuest && guestQueriesUsed >= 2}
+                className="min-h-[44px] flex-1 resize-none border-0 bg-transparent text-slate-800 placeholder:text-slate-400 focus-visible:ring-0 dark:text-slate-200 disabled:opacity-50"
                 rows={1}
               />
-              <Button onClick={sendMessage} disabled={!input.trim() || isLoading} className="h-11 w-11 shrink-0 rounded-lg bg-primary text-white shadow-md hover:bg-primary/90">
+              <Button 
+                onClick={sendMessage} 
+                disabled={!input.trim() || isLoading || (isGuest && guestQueriesUsed >= 2)} 
+                className="h-11 w-11 shrink-0 rounded-lg bg-primary text-white shadow-md hover:bg-primary/90"
+              >
                 <span className="material-symbols-outlined">{isLoading ? "stop" : "send"}</span>
               </Button>
             </div>
@@ -467,22 +648,26 @@ const Index = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white">
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        currentChatId={currentChatId}
-        onSelectChat={loadChat}
-        onNewChat={() => {
-          setMessages([]);
-          setCurrentChatId(null);
-          setIsSidebarOpen(false);
-        }}
-        onProfileClick={() => {
-          setActiveTab("account");
-          setIsSidebarOpen(false);
-        }}
-        refreshTrigger={refreshSidebarTrigger}
-      />
+      <LoginModal />
+      
+      {token && (
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          currentChatId={currentChatId}
+          onSelectChat={loadChat}
+          onNewChat={() => {
+            setMessages([]);
+            setCurrentChatId(null);
+            setIsSidebarOpen(false);
+          }}
+          onProfileClick={() => {
+            setActiveTab("account");
+            setIsSidebarOpen(false);
+          }}
+          refreshTrigger={refreshSidebarTrigger}
+        />
+      )}
 
       <div className="flex-1 flex flex-col relative w-full h-full overflow-hidden">
         {renderContent()}
@@ -493,10 +678,17 @@ const Index = () => {
             <span className={cn("material-symbols-outlined", activeTab === "home" && "fill-1")}>home</span>
             <span className="text-[10px] font-bold">Home</span>
           </button>
-          <button onClick={() => { setActiveTab("account"); setIsSidebarOpen(false); }} className={cn("flex flex-col items-center gap-1 p-2", activeTab === "account" ? "text-primary scale-105" : "text-slate-400")}>
-            <span className={cn("material-symbols-outlined", activeTab === "account" && "fill-1")}>account_circle</span>
-            <span className="text-[10px] font-bold">Account</span>
-          </button>
+          {token ? (
+            <button onClick={() => { setActiveTab("account"); setIsSidebarOpen(false); }} className={cn("flex flex-col items-center gap-1 p-2", activeTab === "account" ? "text-primary scale-105" : "text-slate-400")}>
+              <span className={cn("material-symbols-outlined", activeTab === "account" && "fill-1")}>account_circle</span>
+              <span className="text-[10px] font-bold">Account</span>
+            </button>
+          ) : (
+            <button onClick={() => navigate("/login")} className="flex flex-col items-center gap-1 p-2 text-slate-400">
+              <span className="material-symbols-outlined">login</span>
+              <span className="text-[10px] font-bold">Sign in</span>
+            </button>
+          )}
         </nav>
       </div>
     </div>
