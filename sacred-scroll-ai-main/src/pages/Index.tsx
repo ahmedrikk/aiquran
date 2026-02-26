@@ -60,10 +60,13 @@ const Index = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [guestQueriesUsed, setGuestQueriesUsed] = useState(0);
   const [isGuest, setIsGuest] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackSent, setFeedbackSent] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -464,6 +467,93 @@ const Index = () => {
     </AnimatePresence>
   );
 
+  // Feedback Modal
+  const FeedbackModal = () => {
+    const sendFeedback = () => {
+      if (!feedbackText.trim()) return;
+      
+      const subject = encodeURIComponent("AlQuran AI Feedback");
+      const body = encodeURIComponent(`Feedback from AlQuran AI:\n\n${feedbackText}\n\n---\nUser: ${isGuest ? 'Guest' : 'Logged In'}\nTimestamp: ${new Date().toISOString()}`);
+      
+      window.open(`mailto:xyxyaiapp@gmail.com?subject=${subject}&body=${body}`, '_blank');
+      
+      setFeedbackSent(true);
+      setTimeout(() => {
+        setShowFeedbackModal(false);
+        setFeedbackText("");
+        setFeedbackSent(false);
+      }, 2000);
+    };
+
+    return (
+      <AnimatePresence>
+        {showFeedbackModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowFeedbackModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white dark:bg-card-dark rounded-2xl p-6 max-w-md w-full shadow-2xl border border-primary/10"
+              onClick={e => e.stopPropagation()}
+            >
+              {!feedbackSent ? (
+                <>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <span className="material-symbols-outlined text-primary">feedback</span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">Send Feedback</h3>
+                      <p className="text-xs text-slate-500">Help us improve AlQuran AI</p>
+                    </div>
+                  </div>
+                  
+                  <Textarea
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder="Tell us what you think, report a bug, or suggest a feature..."
+                    className="min-h-[120px] resize-none mb-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                  />
+                  
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowFeedbackModal(false)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={sendFeedback}
+                      disabled={!feedbackText.trim()}
+                      className="flex-1 bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      Send Feedback
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="material-symbols-outlined text-3xl text-green-600">check</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Thank You!</h3>
+                  <p className="text-slate-600 dark:text-slate-400">Your feedback has been sent.</p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  };
+
   const renderContent = () => {
     if (activeTab === "account") {
       return <Account />;
@@ -510,6 +600,17 @@ const Index = () => {
                   <span className="material-symbols-outlined">edit</span>
                 </Button>
               )}
+              
+              {/* Feedback button */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setShowFeedbackModal(true)} 
+                className="text-slate-400 hover:text-primary hover:bg-primary/10"
+                title="Send feedback"
+              >
+                <span className="material-symbols-outlined">feedback</span>
+              </Button>
               
               {/* Theme toggle */}
               <Button 
@@ -774,6 +875,7 @@ const Index = () => {
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white">
       <AuthModal />
       <LoginPromptModal />
+      <FeedbackModal />
       
       {token && (
         <Sidebar
