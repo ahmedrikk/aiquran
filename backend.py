@@ -323,6 +323,8 @@ Respond as the Fluid Mentor:"""
     try:
         thinking, answer = call_llm(user_prompt, system=SYSTEM_PROMPT, think_mode=think_mode)
         if answer:
+            # Post-process to fix citations
+            answer = post_process_citations(answer, sources)
             return {"response": answer, "thinking": thinking, "success": True}
         raise Exception("Empty response")
     except Exception as e:
@@ -340,6 +342,45 @@ Respond as the Fluid Mentor:"""
             text = text_en[:400] + "..." if len(text_en) > 400 else text_en
             fallback += f"> {text}\n\n"
         return {"response": fallback, "thinking": "", "success": False}
+
+
+def post_process_citations(response: str, sources: list[dict]) -> str:
+    """Fix citation format - ensure verse numbers are included."""
+    result = response
+    
+    # Build lookup of surah numbers to names and verses
+    surah_lookup = {}
+    for s in sources:
+        if s.get("source_type") == "quran":
+            surah_num = str(s.get("surah_number", ""))
+            surah_name = s.get("surah_name", "")
+            verse_num = str(s.get("verse_number", ""))
+            if surah_num and surah_name:
+                surah_lookup[surah_num] = {"name": surah_name, "verse": verse_num}
+    
+    # Fix patterns like "Surah 76" → "Surah Al-Insan (76:8)"
+    for surah_num, info in surah_lookup.items():
+        surah_name = info["name"]
+        verse_num = info["verse"]
+        
+        # Pattern: "Surah 76" or "Surah Al-Insan" → "Surah Al-Insan (76:8)"
+        # Match "Surah " followed by number OR name, not already followed by (number:verse)
+        
+        # Replace "Surah {number}" (without verse)
+        result = re.sub(
+            rf'Surah\s+{surah_num}(?!\s*\(|:)',
+            f'Surah {surah_name} ({surah_num}:{verse_num})',
+            result
+        )
+        
+        # Replace "Surah {name}" without (chapter:verse)
+        result = re.sub(
+            rf'Surah\s+{re.escape(surah_name)}(?!\s*\()',
+            f'Surah {surah_name} ({surah_num}:{verse_num})',
+            result
+        )
+    
+    return result
 
 
 def handle_small_talk(query: str, history: list[dict]) -> dict:

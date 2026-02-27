@@ -84,29 +84,48 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content, className 
 function preprocessContent(content: string): string {
   let result = content;
 
-  // 1. Multi-line *"..."* → blockquote (THE MAIN FIX)
-  //    This was causing English translations to appear in the verse card
+  // 1. Multi-line *"..."* → blockquote (for English translations)
+  // Only match if content is primarily Latin (English), not Arabic
   result = result.replace(
     /\*\s*"([\s\S]*?)"\s*\*/g,
     (_, quote) => {
+      // Check if content has significant Arabic - if so, don't convert to blockquote
+      const arabicChars = quote.match(/[\u0600-\u06FF]/g) || [];
+      const latinChars = quote.match(/[a-zA-Z]/g) || [];
+      
+      // If more Arabic than Latin, keep as-is (it's a verse)
+      if (arabicChars.length > latinChars.length) {
+        return ` "${quote}" `;
+      }
+      
+      // Otherwise convert to blockquote (it's a translation)
       const cleaned = quote.replace(/\s*\n\s*/g, ' ').replace(/\s+/g, ' ').trim();
       return `\n\n___BQ___${cleaned}\n\n`;
     }
   );
 
-  // 2. Standalone long "..." paragraph (no asterisks, 80+ chars)
+  // 2. Standalone long "..." paragraph (no asterisks, 80+ chars) - English only
   result = result.replace(
     /^"([^"]{80,})"$/gm,
-    (_, quote) => `___BQ___${quote.trim()}`
+    (_, quote) => {
+      const arabicChars = quote.match(/[\u0600-\u06FF]/g) || [];
+      if (arabicChars.length > 5) {
+        return `"${quote}"`; // Keep Arabic verses as-is
+      }
+      return `___BQ___${quote.trim()}`;
+    }
   );
 
-  // 3. Clean orphaned *" at start or "* at end of lines
-  //    e.g. *".Merciful → .Merciful
+  // 3. Clean orphaned markers
   result = result.replace(/\*"\s*\./g, '.');
   result = result.replace(/"\*\s*$/gm, '"');
   result = result.replace(/^\*"\s*/gm, '"');
 
-  // 4. Clean stray solo asterisks at line boundaries (not part of **bold**)
+  // 4. Clean stray BQ markers that leaked into Arabic (EMERGENCY FIX)
+  result = result.replace(/([\u0600-\u06FF])___BQ___/g, '$1');
+  result = result.replace(/___BQ___([\u0600-\u06FF])/g, '$1');
+
+  // 5. Clean stray solo asterisks at line boundaries
   result = result.replace(/(^|\n)\*([^*\n])/g, '$1$2');
   result = result.replace(/([^*\n])\*($|\n)/g, '$1$2');
 
