@@ -32,7 +32,7 @@ EMBEDDING_DIM = 384
 # OpenRouter LLM
 OPENROUTER_API_KEY = os.environ.get(
     "OPENROUTER_API_KEY",
-    "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"
+    "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"
 )
 OPENROUTER_MODEL = "qwen/qwen3-vl-30b-a3b-thinking"
 
