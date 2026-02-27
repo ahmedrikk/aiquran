@@ -62,13 +62,15 @@ SYSTEM_PROMPT = """You are a warm, knowledgeable, and strictly orthodox Islamic 
 4. **Tone:** Use "We," "Our tradition," and be gentle but firm on Haram/Halal boundaries.
 
 **CITATION FORMAT RULES (CRITICAL - MUST FOLLOW EXACTLY):**
-- Quran: ALWAYS write "Surah [Name] ([Chapter]:[Verse])" — e.g., "Surah Al-Baqarah (2:255)"
-- The format is: Surah [Name] + space + ([Chapter]:[Verse]) — Chapter and Verse are NUMBERS separated by colon
-- CORRECT: "Surah Al-Insan (76:8)", "Surah Al-Isra (17:9)"
-- WRONG: "Surah 76", "Surah 17" (missing verse number!)
+- When citing a Quran verse in your response, you MUST write: "Surah [Name] ([Chapter]:[Verse])"
+- Example: "Surah Al-Insan (76:8)" or "Surah Al-Isra (17:9)" - the verse number MUST be included
+- WRONG formats that you must NEVER use:
+  * "Surah 76" - missing verse number!
+  * "Surah Al-Insan" - missing chapter:verse!
+  * "In Surah 76, it is stated" - missing verse number!
+- CORRECT format: "In Surah Al-Insan (76:8), Allah says..." or "As mentioned in Surah Al-Isra (17:9)..."
+- The pattern is ALWAYS: Surah + Name + (Chapter:Verse) - all three parts are required
 - Hadith: Always write "Sahih Bukhari (#[Number])" — e.g., "Sahih Bukhari (#5590)"
-- NEVER write just "Surah 76" or "Surah Al-Insan" without the verse number in parentheses
-- ALWAYS include BOTH chapter AND verse number in the format (Chapter:Verse)
 
 **LANGUAGE:**
 - Reply in the same language/script as the user (English, Urdu, or Roman Urdu).
@@ -235,14 +237,16 @@ def format_source_for_context(item: dict) -> str:
         surah_name = item.get('surah_name', 'Unknown')
         surah_num = item.get('surah_number', '?')
         verse_num = item.get('verse_number', '?')
-        return (f"📖 Quran — Surah {surah_name} ({surah_num}:{verse_num})\n"
+        # Format: CITATION_FORMAT: Surah Al-Insan (76:8) - use this exact format in your response
+        return (f"📖 QURAN VERSE - CITE AS: Surah {surah_name} ({surah_num}:{verse_num})\n"
+                f"   Chapter: {surah_num}, Verse: {verse_num}\n"
                 f"   Arabic: {text_ar}\n"
                 f"   English: {text_en}")
     else:
         hadith_num = item.get('hadith_number', '')
         collection = item.get('collection', 'Hadith')
         num_display = f" #{hadith_num}" if hadith_num and str(hadith_num).lower() not in ('none', 'n/a', '') else ""
-        return (f"📜 {collection}{num_display}\n"
+        return (f"📜 HADITH - CITE AS: {collection}{num_display}\n"
                 f"   Arabic: {text_ar}\n"
                 f"   English: {text_en}")
 
@@ -304,12 +308,15 @@ def generate_response(query: str, sources: list[dict], history: list[dict], thin
 
 CURRENT QUESTION: {query}
 
-CRITICAL REMINDER: When citing Quran verses, you MUST use the format "Surah [Name] ([Chapter]:[Verse])" with BOTH chapter AND verse numbers.
+CRITICAL REMINDER - CITATION FORMAT:
+When citing Quran verses, use EXACTLY this format: "Surah [Name] ([Chapter]:[Verse])"
 
-CORRECT: "In Surah Al-Insan (76:8), Allah says..."
-WRONG: "In Surah 76, Allah says..." (missing verse number!)
+✅ CORRECT: "In Surah Al-Insan (76:8), Allah says..."
+❌ WRONG: "In Surah 76, Allah says..." (missing verse!)
+❌ WRONG: "In Surah Al-Insan, it is stated" (missing chapter:verse!)
 
-The sources above show the exact Surah name, chapter number, and verse number for each verse. Use all three in your citation.
+Each source above shows: CITATION_FORMAT: Surah [Name] ([Chapter]:[Verse])
+Copy this format exactly - include the verse number in parentheses.
 
 Respond as the Fluid Mentor:"""
 
