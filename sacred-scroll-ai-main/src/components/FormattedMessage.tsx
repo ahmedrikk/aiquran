@@ -252,12 +252,17 @@ function parseInline(text: string): React.ReactNode[] {
 
     // ── Pattern matchers (ordered by specificity) ──
 
-    // 1. Bold Surah/Hadith markdown: **Sahih Bukhari [#5590]**
+    // 1. Bold Surah/Hadith markdown: **Surah Al-A'raf (7:181)** or **Sahih Bukhari #5590**
     match(remaining, /\*\*((?:Surah|Sahih|Quran|Hadith|Al-|Bukhari|Muslim|Tirmidhi|Abu Dawud|Ibn Majah|Nasai|Muwatta)[^*]{2,80})\*\*/i,
       m => <GoldBadge key={key++} text={m[1]} />);
 
+    // 1b. "Surah Al-A'raf (7:181)" — PRIMARY backend format (plain, no bold markers)
+    // This is what post_process_citations() enforces. MUST come before generic patterns.
+    match(remaining, /Surah\s+([\w'''\u2019-]+(?:\s+[\w'''\u2019-]+){0,4})\s*\((\d{1,3}):(\d{1,3})\)/i,
+      m => <GoldBadge key={key++} text={`📖 ${m[1]} (${m[2]}:${m[3]})`} />);
+
     // 2. "Surah Al-Baqarah, verse 153" or "Surah 7, verse 180"
-    match(remaining, /Surah\s+([\w'''-]+(?:\s[\w'''-]+){0,3}),?\s*verse\s*(\d+)/i,
+    match(remaining, /Surah\s+([\w'''\u2019-]+(?:\s[\w'''\u2019-]+){0,3}),?\s*verse\s*(\d+)/i,
       m => <GoldBadge key={key++} text={`📖 ${m[1]}:${m[2]}`} />);
 
     // 3. (Quran 7:28) or (Surah 24:32)
@@ -269,7 +274,7 @@ function parseInline(text: string): React.ReactNode[] {
       m => <GoldBadge key={key++} text={`📖 Quran ${m[1]}:${m[2]}`} />);
 
     // 5. "verse X of Surah Y"
-    match(remaining, /verse\s+(\d{1,3})\s+of\s+Surah\s+([\w'''-]+(?:\s[\w'''-]+){0,3})/i,
+    match(remaining, /verse\s+(\d{1,3})\s+of\s+Surah\s+([\w'''\u2019-]+(?:\s[\w'''\u2019-]+){0,3})/i,
       m => <GoldBadge key={key++} text={`📖 ${m[2]}:${m[1]}`} />);
 
     // 6. Hadith refs: "Sahih Bukhari #5590"
@@ -339,12 +344,21 @@ function parseInline(text: string): React.ReactNode[] {
 
 function GoldBadge({ text }: { text: string }) {
   // Clean up: remove #N/A, extra spaces
-  const clean = text.replace(/#?N\/A/gi, '').replace(/\s+/g, ' ').trim();
+  let clean = text.replace(/#?N\/A/gi, '').replace(/\s+/g, ' ').trim();
   if (clean.length < 3) return null;
-  
+
+  // Auto-prefix 📖 for Quran references that don't already have it
+  if (!clean.includes('📖') && !clean.includes('📜') && !clean.includes('⚖️')) {
+    if (/^Surah\s/i.test(clean) || /^Quran\s/i.test(clean)) {
+      clean = '📖 ' + clean;
+    } else if (/^(?:Sahih|Tirmidhi|Abu Dawud|Ibn Majah|Muwatta)/i.test(clean)) {
+      clean = '📜 ' + clean;
+    }
+  }
+
   // Determine badge style based on content
   const isQuran = clean.includes('📖') || /Surah|Quran/i.test(clean);
-  const isIjma = clean.includes('Ijma') || clean.includes('Consensus') || clean.includes('⚖️') && clean.includes('Consensus');
+  const isIjma = clean.includes('Ijma') || clean.includes('Consensus') || (clean.includes('⚖️') && clean.includes('Consensus'));
   const isQiyas = clean.includes('Qiyas') || clean.includes('Analogy');
   
   let badgeClass = "inline-flex items-center mx-1 px-2.5 py-0.5 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ";
@@ -356,8 +370,8 @@ function GoldBadge({ text }: { text: string }) {
     // Purple for Qiyas (analogy)
     badgeClass += "bg-purple-50 text-purple-800 border border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-600";
   } else if (isQuran) {
-    // Blue for Quran
-    badgeClass += "bg-blue-50 text-blue-800 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600";
+    // Gold for Quran (spec: all citations use gold/amber)
+    badgeClass += "bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-600";
   } else {
     // Amber for Hadith (default)
     badgeClass += "bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-600";
