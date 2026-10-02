@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { composeAnswer, searchQuestion, sourceOnlyAnswer, validateQuestion, type Source } from '../../../supabase/functions/quran-chat/core';
+import { boundedSources, composeAnswer, searchQuestion, sourceOnlyAnswer, validateQuestion, type Source } from '../../../supabase/functions/quran-chat/core';
 
 const source: Source = {
   id: 'quran-2-153', source_type: 'quran', surah_name: 'Al-Baqarah', surah_number: 2, verse_number: 153,
@@ -8,6 +8,14 @@ const source: Source = {
 };
 
 describe('grounded chat', () => {
+  it('keeps duplicate long passages from overflowing saved answers', () => {
+    const long = { ...source, text_en: 'a'.repeat(14000), text_ar: 'ب' };
+    const inputs = [long, { ...long, id: 'duplicate' }, { ...source, id: 'second', text_en: 'b'.repeat(14000) }, source];
+    const selected = boundedSources(inputs);
+    expect(selected.map(s => s.id)).toEqual([long.id, source.id]);
+    expect(sourceOnlyAnswer(inputs).response.length).toBeLessThan(30000);
+    expect(composeAnswer(JSON.stringify({ answer: 'a'.repeat(12000), source_ids: [long.id] }), [selected[0]]).response.length).toBeLessThan(30000);
+  });
   it('rejects empty and excessively long questions', () => {
     expect(() => validateQuestion({ message: '  ' })).toThrow();
     expect(() => validateQuestion({ message: 'x'.repeat(4001) })).toThrow();

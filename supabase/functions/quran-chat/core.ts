@@ -44,6 +44,19 @@ export function sourceReference(source: Source) {
 }
 
 // The model explains; exact quotations and references are assembled from the corpus.
+export function boundedSources(sources: Source[]) {
+  const seen = new Set<string>();
+  let characters = 0;
+  return sources.filter(source => {
+    const identity = `${source.text_ar}\n${source.text_en}`;
+    const size = identity.length + citation(source).length + 20;
+    if (seen.has(identity) || characters + size > 16000) return false;
+    seen.add(identity);
+    characters += size;
+    return true;
+  });
+}
+
 export function composeAnswer(output: string, sources: Source[]) {
   const parsed = JSON.parse(output.replace(/^```(?:json)?\s*|\s*```$/g, ''));
   if (typeof parsed.answer !== 'string' || !parsed.answer.trim() || parsed.answer.length > 12000 || !Array.isArray(parsed.source_ids)) {
@@ -63,8 +76,8 @@ export function composeAnswer(output: string, sources: Source[]) {
 
 export function sourceOnlyAnswer(sources: Source[]) {
   return {
-    response: `The explanation service is temporarily unavailable. These matching sources are available to read:\n\n${sources.map(s => `**${citation(s)}**\n\n${s.text_ar}\n\n*${s.text_en}*`).join('\n\n')}`,
-    sources_used: sources.map(sourceReference), degraded: true,
+    response: `The explanation service is temporarily unavailable. These matching sources are available to read:\n\n${boundedSources(sources).map(s => `**${citation(s)}**\n\n${s.text_ar}\n\n*${s.text_en}*`).join('\n\n')}`,
+    sources_used: boundedSources(sources).map(sourceReference), degraded: true,
   };
 }
 
