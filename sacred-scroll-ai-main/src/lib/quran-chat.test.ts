@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { composeAnswer, searchQuestion, sourceOnlyAnswer, validateQuestion, type Source } from '../../../supabase/functions/quran-chat/core';
+import { boundedSources, composeAnswer, searchQuestion, sourceOnlyAnswer, validateQuestion, type Source } from '../../../supabase/functions/quran-chat/core';
 
 const source: Source = {
   id: 'quran-2-153', source_type: 'quran', surah_name: 'Al-Baqarah', surah_number: 2, verse_number: 153,
@@ -8,6 +8,14 @@ const source: Source = {
 };
 
 describe('grounded chat', () => {
+  it('keeps duplicate long passages from overflowing saved answers', () => {
+    const long = { ...source, text_en: 'a'.repeat(14000), text_ar: 'ب' };
+    const inputs = [long, { ...long, id: 'duplicate' }, { ...source, id: 'second', text_en: 'b'.repeat(14000) }, source];
+    const selected = boundedSources(inputs);
+    expect(selected.map(s => s.id)).toEqual([long.id, source.id]);
+    expect(sourceOnlyAnswer(inputs).response.length).toBeLessThan(30000);
+    expect(composeAnswer(JSON.stringify({ answer: 'a'.repeat(12000), source_ids: [long.id] }), [selected[0]]).response.length).toBeLessThan(30000);
+  });
   it('rejects empty and excessively long questions', () => {
     expect(() => validateQuestion({ message: '  ' })).toThrow();
     expect(() => validateQuestion({ message: 'x'.repeat(4001) })).toThrow();
@@ -17,8 +25,9 @@ describe('grounded chat', () => {
     expect(searchQuestion('Explain 2:153')).toEqual({ p_query: 'Explain 2:153', p_surah: 2, p_verse: 153 });
   });
   it('uses topical terms instead of requiring every question word to match', () => {
-    expect(searchQuestion('What does the Quran say about patience?').p_query).toBe('patience');
-    expect(searchQuestion('patience and prayer').p_query).toBe('patience OR prayer');
+    expect(searchQuestion('What does the Quran say about patience?').p_query).toBe('patience OR patient');
+    expect(searchQuestion('What does the Quran say about gratitude?').p_query).toBe('gratitude OR grateful OR thankful OR thanks');
+    expect(searchQuestion('patience and prayer').p_query).toBe('patience OR patient OR prayer');
   });
   it('appends exact source text and validated reference numbers', () => {
     const result = composeAnswer(JSON.stringify({ answer: 'This passage encourages perseverance.', source_ids: [source.id, source.id] }), [source]);

@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { composeAnswer, searchQuestion, sourceOnlyAnswer, SYSTEM_PROMPT, validateQuestion, type Source } from './core.ts';
+import { boundedSources, composeAnswer, searchQuestion, sourceOnlyAnswer, SYSTEM_PROMPT, validateQuestion, type Source } from './core.ts';
 
 const allowedOrigins = (Deno.env.get('FRONTEND_URLS') || 'https://aiquran.live,https://www.aiquran.live,http://localhost:8080').split(',').map(s => s.trim());
 const url = Deno.env.get('SUPABASE_URL')!;
@@ -116,9 +116,11 @@ Deno.serve(async request => {
     const { count, error: corpusError } = await db.from('quran_sources').select('id', { count: 'exact', head: true });
     if (corpusError || !count) throw new Error('Source corpus is not ready');
     const search = searchQuestion(question);
-    const { data, error } = await db.rpc('quran_search_sources', search);
+    const { data, error } = /\bquran\b/i.test(question) && search.p_surah === null
+      ? await db.from('quran_sources').select('*').eq('source_type', 'quran').textSearch('search_en', search.p_query, { type: 'websearch', config: 'english' }).order('id').limit(5)
+      : await db.rpc('quran_search_sources', search);
     if (error) throw error;
-    const sources = (data || []) as Source[];
+    const sources = boundedSources((data || []) as Source[]);
     let answer;
     if (!sources.length) answer = { response: 'I could not find supporting sources for this question. Try a specific topic or a chapter and verse reference such as 2:153.', sources_used: [] };
     else {
