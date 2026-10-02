@@ -25,8 +25,9 @@ describe('grounded chat', () => {
     expect(searchQuestion('Explain 2:153')).toEqual({ p_query: 'Explain 2:153', p_surah: 2, p_verse: 153 });
   });
   it('uses topical terms instead of requiring every question word to match', () => {
-    expect(searchQuestion('What does the Quran say about patience?').p_query).toBe('patience');
-    expect(searchQuestion('patience and prayer').p_query).toBe('patience OR prayer');
+    expect(searchQuestion('What does the Quran say about patience?').p_query).toBe('patience OR patient');
+    expect(searchQuestion('What does the Quran say about gratitude?').p_query).toBe('gratitude OR grateful OR thankful OR thanks');
+    expect(searchQuestion('patience and prayer').p_query).toBe('patience OR patient OR prayer');
   });
   it('appends exact source text and validated reference numbers', () => {
     const result = composeAnswer(JSON.stringify({ answer: 'This passage encourages perseverance.', source_ids: [source.id, source.id] }), [source]);

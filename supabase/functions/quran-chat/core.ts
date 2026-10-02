@@ -26,7 +26,9 @@ export function searchQuestion(question: string) {
   if (reference) return { p_query: question, p_surah: Number(reference[1]), p_verse: Number(reference[2]) };
   const stop = new Set(['what', 'does', 'the', 'quran', 'say', 'about', 'tell', 'me', 'please', 'is', 'in', 'of', 'and', 'a', 'to', 'how']);
   const terms = question.toLowerCase().match(/[\p{L}\p{N}]+/gu)?.filter(w => !stop.has(w) && w.length > 2).slice(0, 15) || [];
-  return { p_query: terms.join(' OR ') || question, p_surah: null, p_verse: null };
+  const synonyms: Record<string, string[]> = { gratitude: ['grateful', 'thankful', 'thanks'], patience: ['patient'], protection: ['protect'], justice: ['just'] };
+  const expanded = [...new Set(terms.flatMap(term => [term, ...(synonyms[term] || [])]))];
+  return { p_query: expanded.join(' OR ') || question, p_surah: null, p_verse: null };
 }
 
 export function citation(source: Source) {

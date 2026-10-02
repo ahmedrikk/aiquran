@@ -31,7 +31,12 @@ beforeEach(() => {
     return { data: null, error: null };
   });
   fixtures.from.mockReset().mockImplementation((table: string) => ({
-    select: () => table === 'quran_sources' ? Promise.resolve({ count: corpusCount, error: null }) : {
+    select: (_fields: string, options?: { head?: boolean }) => table === 'quran_sources' ? (options?.head ? Promise.resolve({ count: corpusCount, error: null }) : {
+      eq: function () { return this; },
+      textSearch: function () { return this; },
+      order: function () { return this; },
+      limit: async () => ({ data: [source], error: null }),
+    }) : {
       eq: function () { return this; },
       maybeSingle: async () => ({ data: chat, error: null }),
     },
