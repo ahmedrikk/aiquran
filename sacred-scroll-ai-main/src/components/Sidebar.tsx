@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL, apiFetch } from '@/lib/backend';
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000") + "/api";
 
 interface Chat {
     id: string;
@@ -38,7 +38,7 @@ const Sidebar = ({ isOpen, onClose, currentChatId, onSelectChat, onNewChat, onPr
 
     const fetchChats = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/chats?limit=50`, {
+            const response = await apiFetch(`${API_BASE_URL}/chats?limit=50`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (response.ok) {
@@ -55,7 +55,7 @@ const Sidebar = ({ isOpen, onClose, currentChatId, onSelectChat, onNewChat, onPr
         if (!confirm("Are you sure you want to delete this chat?")) return;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/chats/${chatId}`, {
+            const response = await apiFetch(`${API_BASE_URL}/chats/${chatId}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });

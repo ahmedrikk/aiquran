@@ -1,0 +1,5 @@
+project_id = "aiquran"
+
+# Public guests use the same function; signed-in requests are verified in code.
+[functions.quran-chat]
+verify_jwt = false

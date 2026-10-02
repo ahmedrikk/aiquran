@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
+import { API_BASE_URL, apiFetch, readApiResponse, signOut } from '@/lib/backend';
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000") + "/api";
 
 interface UserProfile {
     name: string;
@@ -44,7 +44,8 @@ const Account = () => {
         }
     }, []);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        await signOut();
         localStorage.removeItem("user_token");
         localStorage.removeItem("user_profile");
         navigate("/login");
@@ -80,14 +81,12 @@ const Account = () => {
         try {
             const token = localStorage.getItem("user_token");
             if (!token) return;
-            const res = await fetch(`${API_BASE_URL}/bookmarks`, {
+            const res = await apiFetch(`${API_BASE_URL}/bookmarks`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (res.ok) {
-                const data = await res.json();
-                setBookmarks(data.bookmarks);
-                setShowBookmarks(true);
-            }
+            const data = await readApiResponse(res);
+            setBookmarks(data.bookmarks);
+            setShowBookmarks(true);
         } catch (error) {
             console.error("Failed to fetch bookmarks", error);
             toast({ title: "Error", description: "Failed to load bookmarks", variant: "destructive" });
@@ -100,10 +99,11 @@ const Account = () => {
         // Optimistic removal
         setBookmarks(prev => prev.filter(b => b.id !== messageId));
         try {
-            await fetch(`${API_BASE_URL}/messages/${messageId}/bookmark`, {
+            const response = await apiFetch(`${API_BASE_URL}/messages/${messageId}/bookmark`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` }
             });
+            await readApiResponse(response);
         } catch (error) {
             console.error("Failed to remove bookmark", error);
             toast({ title: "Error", description: "Failed to remove bookmark", variant: "destructive" });

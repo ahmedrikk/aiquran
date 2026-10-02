@@ -61,48 +61,10 @@ def build_database():
     # ---------------------------------------------------------
     # 1. Fetch Quran Dataset
     # ---------------------------------------------------------
-    print("🌍 Fetching Quran dataset (ImruQays/Quran-Classical-Arabic-English-Parallel-texts)...")
-    try:
-        quran_ds = load_dataset("ImruQays/Quran-Classical-Arabic-English-Parallel-texts", split="train")
-    except Exception as e:
-        print(f"❌ Error loading Quran dataset: {e}")
-        print("   Trying alternative dataset...")
-        quran_ds = load_dataset("Buraaq/quran-audio-text-dataset", split="train")
-    
-    # Metadata Reconstruction Logic
-    current_surah = 1
-    current_verse = 1
-    quran_items_count = 0
-    expected_total = sum(SURAH_VERSE_COUNTS)
-    
-    if len(quran_ds) != expected_total:
-        print(f"⚠️ Dataset has {len(quran_ds)} verses, expected {expected_total}. Mapping may vary slightly.")
-
-    for row in tqdm(quran_ds, desc="📖 Processing Quran"):
-        # Extract Text (handle different column names)
-        text_ar = row.get('arabic-uthmanic') or row.get('arabic') or row.get('ar', '')
-        text_en = row.get('en-sahih') or row.get('translation') or row.get('en', '')
-        
-        surah_name = SURAH_NAMES[current_surah - 1] if current_surah <= len(SURAH_NAMES) else f"Surah {current_surah}"
-        
-        all_items.append({
-            "source_type": "quran",
-            "surah_name": surah_name,
-            "surah_number": current_surah,
-            "verse_number": current_verse,
-            "text_en": text_en,
-            "text_ar": text_ar,
-            "id": f"quran-{current_surah}-{current_verse}"
-        })
-        
-        quran_items_count += 1
-        
-        # Advance counters
-        if current_surah <= len(SURAH_VERSE_COUNTS) and current_verse < SURAH_VERSE_COUNTS[current_surah - 1]:
-            current_verse += 1
-        else:
-            current_surah += 1
-            current_verse = 1
+    # Never reconstruct references from row position: a missing row shifts every citation.
+    from ingest import fetch_quran_data
+    all_items.extend(fetch_quran_data())
+    quran_items_count = len(all_items)
 
     # ---------------------------------------------------------
     # 2. Fetch Hadith Dataset
