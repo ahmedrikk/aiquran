@@ -2,8 +2,8 @@ import { useState } from "react";
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useNavigate } from "react-router-dom";
 import { Capacitor } from '@capacitor/core';
+import { API_ORIGIN as API_BASE, apiFetch, readApiResponse } from '@/lib/backend';
 
-const API_BASE = (import.meta.env.VITE_API_URL ?? "http://localhost:8000");
 
 const Login = () => {
     const navigate = useNavigate();
@@ -15,13 +15,12 @@ const Login = () => {
         setError(null);
         setLoading(true);
         try {
-            const response = await fetch(`${API_BASE}/auth/google`, {
+            const response = await apiFetch(`${API_BASE}/auth/google`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ credential }),
             });
-            if (!response.ok) throw new Error(`Auth failed: ${response.status}`);
-            const data = await response.json();
+            const data = await readApiResponse(response);
             localStorage.setItem('user_token', data.access_token);
             localStorage.setItem('user_profile', JSON.stringify(data.user));
             navigate('/');
@@ -44,7 +43,7 @@ const Login = () => {
         try {
             const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
             await GoogleAuth.initialize({
-                clientId: '846223196875-iim6ake76pqe61tufn3t8rccogqv7ec2.apps.googleusercontent.com',
+                clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '846223196875-iim6ake76pqe61tufn3t8rccogqv7ec2.apps.googleusercontent.com',
                 scopes: ['profile', 'email'],
                 grantOfflineAccess: true,
             });

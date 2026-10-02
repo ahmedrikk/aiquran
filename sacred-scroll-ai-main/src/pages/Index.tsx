@@ -10,9 +10,9 @@ import Account from "./Account";
 import Sidebar from "@/components/Sidebar";
 import InstallPrompt from "@/components/InstallPrompt";
 import FormattedMessage from "@/components/FormattedMessage";
+import { API_BASE_URL, API_ORIGIN, apiFetch, readApiResponse } from '@/lib/backend';
 
 // API Configuration — falls back to localhost for local dev
-const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000") + "/api";
 
 interface Message {
   id: string;
@@ -86,7 +86,7 @@ const Index = () => {
     setAuthError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL.replace('/api', '')}/auth/google`, {
+      const response = await apiFetch(`${API_ORIGIN}/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential: credentialResponse.credential }),
@@ -142,7 +142,7 @@ const Index = () => {
     }
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/chats/${chatId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/chats/${chatId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -159,25 +159,23 @@ const Index = () => {
   };
 
   const callGuestChat = async (messageContent: string): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/chat/guest`, {
+    const response = await apiFetch(`${API_BASE_URL}/chat/guest`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ 
         message: messageContent, 
-        guest_id: getGuestId() 
+        guest_id: getGuestId(),
+        history: messages.filter(m => !m.content.startsWith('⚠️')).slice(-6).map(({role, content}) => ({role, content}))
       }),
     });
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
-    return response.json();
+    return readApiResponse(response);
   };
 
   const callAuthChat = async (messageContent: string): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/chat`, {
+    const response = await apiFetch(`${API_BASE_URL}/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -191,11 +189,12 @@ const Index = () => {
         localStorage.removeItem("user_token");
         localStorage.removeItem("user_profile");
         setIsGuest(true);
-        throw new Error("Session expired");
+        setShowLoginModal(true);
+        throw new Error("Session expired. Please sign in again.");
       }
-      throw new Error(`API Error: ${response.status}`);
+      return readApiResponse(response);
     }
-    return response.json();
+    return readApiResponse(response);
   };
 
   const sendMessage = async () => {
@@ -221,7 +220,7 @@ const Index = () => {
         data = await callGuestChat(userMessage.content);
         
         // Update guest query count
-        if (data.queries_used) {
+        if (typeof data.queries_used === 'number') {
           setGuestQueriesUsed(data.queries_used);
           localStorage.setItem("guest_queries_used", data.queries_used.toString());
         }
@@ -261,7 +260,7 @@ const Index = () => {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "⚠️ Unable to connect to the knowledge base. Please check your connection.",
+        content: `⚠️ ${error instanceof Error ? error.message : 'The service is temporarily unavailable. Please try again.'}`,
       }]);
     } finally {
       setIsLoading(false);
@@ -290,9 +289,13 @@ const Index = () => {
       
       if (isGuest) {
         data = await callGuestChat(lastUserMsg.content);
-        if (data.queries_used) {
+        if (typeof data.queries_used === 'number') {
           setGuestQueriesUsed(data.queries_used);
           localStorage.setItem("guest_queries_used", data.queries_used.toString());
+        }
+        if (data.limit_reached) {
+          setShowLoginModal(true);
+          return;
         }
       } else {
         data = await callAuthChat(lastUserMsg.content);
@@ -310,6 +313,7 @@ const Index = () => {
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error("Regenerate error:", error);
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: `⚠️ ${error instanceof Error ? error.message : 'Please try again.'}` }]);
     } finally {
       setIsLoading(false);
     }
@@ -326,12 +330,14 @@ const Index = () => {
     ));
 
     try {
-      await fetch(`${API_BASE_URL}/messages/${messageId}/bookmark`, {
+      const response = await apiFetch(`${API_BASE_URL}/messages/${messageId}/bookmark`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
+      await readApiResponse(response);
     } catch (error) {
       console.error("Failed to toggle bookmark", error);
+      setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, is_bookmarked: !msg.is_bookmarked } : msg));
     }
   };
 

@@ -13,8 +13,14 @@ METADATA_PATH = os.path.join(DATA_DIR, "metadata.json")
 MODEL_NAME = 'all-MiniLM-L6-v2'
 
 # URLs
-QURAN_EN_URL = "http://api.alquran.cloud/v1/quran/en.asad"
-QURAN_AR_URL = "http://api.alquran.cloud/v1/quran/quran-uthmani"
+QURAN_EN_URL = "https://api.alquran.cloud/v1/quran/en.asad"
+QURAN_AR_URL = "https://api.alquran.cloud/v1/quran/quran-uthmani"
+
+
+def fetch_json(url):
+    response = requests.get(url, timeout=60)
+    response.raise_for_status()
+    return response.json()
 
 HADITH_COLLECTIONS = {
     "bukhari": {
@@ -32,22 +38,26 @@ HADITH_COLLECTIONS = {
 def fetch_quran_data():
     """Fetch and merge English and Arabic Quran."""
     print("🌍 Fetching Quran (English)...")
-    res_en = requests.get(QURAN_EN_URL).json()
+    res_en = fetch_json(QURAN_EN_URL)
     print("🌍 Fetching Quran (Arabic)...")
-    res_ar = requests.get(QURAN_AR_URL).json()
+    res_ar = fetch_json(QURAN_AR_URL)
     
     quran_items = []
     
     surahs_en = res_en['data']['surahs']
     surahs_ar = res_ar['data']['surahs']
     
-    for i in range(114):
-        s_en = surahs_en[i]
-        s_ar = surahs_ar[i]
+    arabic_surahs = {s['number']: s for s in surahs_ar}
+    if len(surahs_en) != 114 or len(arabic_surahs) != 114:
+        raise ValueError("Incomplete Quran dataset")
+    for s_en in surahs_en:
+        s_ar = arabic_surahs[s_en['number']]
+        arabic_verses = {v['numberInSurah']: v for v in s_ar['ayahs']}
+        if {v['numberInSurah'] for v in s_en['ayahs']} != set(arabic_verses):
+            raise ValueError(f"Verse numbering mismatch in surah {s_en['number']}")
         
-        for j in range(len(s_en['ayahs'])):
-            v_en = s_en['ayahs'][j]
-            v_ar = s_ar['ayahs'][j]
+        for v_en in s_en['ayahs']:
+            v_ar = arabic_verses[v_en['numberInSurah']]
             
             quran_items.append({
                 "source_type": "quran",
@@ -59,6 +69,8 @@ def fetch_quran_data():
                 "id": f"quran-{s_en['number']}-{v_en['numberInSurah']}"
             })
             
+    if len(quran_items) != 6236:
+        raise ValueError("Expected 6236 explicitly numbered Quran verses")
     print(f"✅ Processed {len(quran_items)} Quran verses.")
     return quran_items
 

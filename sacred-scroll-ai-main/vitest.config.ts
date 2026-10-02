@@ -11,6 +11,9 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "npm:@supabase/supabase-js@2": path.resolve(__dirname, 'node_modules/@supabase/supabase-js'),
+    },
   },
 });

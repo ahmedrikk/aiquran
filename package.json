@@ -1,0 +1,11 @@
+{
+  "name": "aiquran-backend-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sources:download": "node scripts/import-sources.mjs",
+    "sources:upload": "node scripts/import-sources.mjs --cached --upload",
+    "test:database": "node scripts/verify-database.mjs"
+  },
+  "devDependencies": { "@electric-sql/pglite": "0.5.8" }
+}
