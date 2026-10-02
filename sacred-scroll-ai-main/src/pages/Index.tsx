@@ -384,7 +384,7 @@ const Index = () => {
               </h2>
               
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                Access your chat history, bookmarks, and unlimited questions.
+                Access your chat history, bookmarks, and 50 questions per day.
               </p>
               
               {isAuthenticating ? (
