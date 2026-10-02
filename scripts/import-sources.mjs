@@ -63,7 +63,10 @@ async function upload(rows) {
     const result = await fetch(`${url}/rest/v1/quran_sources?on_conflict=id`, {
       method: 'POST', signal: AbortSignal.timeout(60_000),
       headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify(rows.slice(start, start + 100)),
+      body: JSON.stringify(rows.slice(start, start + 100).map(row => ({
+        surah_number: null, surah_name: null, verse_number: null,
+        collection: null, hadith_number: null, ...row,
+      }))),
     });
     if (!result.ok) throw new Error(`Source import failed at batch ${start} (${result.status})`);
   }

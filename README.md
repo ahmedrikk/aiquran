@@ -19,7 +19,9 @@ The old metadata also mislabeled Quran verses (for example 1:1 contained 1:2). T
 - During provider failure, readers receive clearly labeled source-only results. Failed explanations and missing matches do not consume guest questions.
 - Guest history is sent only for the current conversation and is not saved. Authenticated history is stored in the user's private chats.
 
-## Deploy to a separate QuranAI Supabase project
+## Deploy the QuranAI Supabase backend
+
+The approved deployment uses the existing CVBot project (`ozjpujomacchbybofady`) to stay within the two-project free plan. QuranAI uses only its `quran_` tables and functions; the existing `documents` table and its 55 records are preserved. Authentication settings and project resource limits are shared. Do not apply this migration to the PixelPulse/Talus project. A new dedicated QuranAI project remains an option when another slot is available.
 
 1. Create/select the QuranAI project. Enable Google in Authentication → Providers using the existing Google web client ID and client secret. Allow the deployed domains in Google's authorized JavaScript origins. Set Supabase's Site URL to `https://www.aiquran.live` and allow `https://aiquran.live/**` and `https://www.aiquran.live/**` as redirects.
 2. Link the project using the Supabase CLI. Apply `supabase/migrations/20261002000001_quran_backend.sql` with `supabase db push`. Do not run it against Talus.
